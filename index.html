@@ -252,14 +252,26 @@ html,body{height:100%;width:100%;overflow:hidden;background:var(--bg);color:var(
   </div>
   <div id="setup-general" class="scroll-area">
     <div class="card">
-      <div class="card-title">Параметры</div>
+      <div class="card-title">Режим раздачи ролей</div>
+      <div style="display:flex;gap:8px;margin-bottom:10px;">
+        <button class="btn btn-primary btn-sm" id="mode-auto" onclick="setAssignMode('auto')" style="flex:1">🎲 Авто</button>
+        <button class="btn btn-secondary btn-sm" id="mode-manual" onclick="setAssignMode('manual')" style="flex:1">✏️ Вручную</button>
+      </div>
       <div class="form-group mb8"><label class="inp-label">Количество игроков</label><input class="inp" id="setup-players" type="number" value="10" min="4" max="30" oninput="updateSetupPreview()"></div>
       <div class="form-group mb8"><label class="inp-label">Пароль (необязательно)</label><input class="inp" id="setup-password" type="text" placeholder="Оставьте пустым — без пароля"></div>
     </div>
-    <div class="card">
-      <div class="card-title">Распределение ролей</div>
-      <div id="setup-preview-content"></div>
-      <div id="setup-warn" class="alert-box alert-warn mt8" style="display:none"></div>
+    <div id="auto-mode-block">
+      <div class="card">
+        <div class="card-title">Распределение ролей</div>
+        <div id="setup-preview-content"></div>
+        <div id="setup-warn" class="alert-box alert-warn mt8" style="display:none"></div>
+      </div>
+    </div>
+    <div id="manual-mode-block" style="display:none">
+      <div class="card">
+        <div class="card-title">Ввод игроков вручную</div>
+        <div id="manual-players-list"></div>
+      </div>
     </div>
     <div class="card">
       <div class="card-title">Кастомные роли</div>
@@ -295,6 +307,19 @@ html,body{height:100%;width:100%;overflow:hidden;background:var(--bg);color:var(
       <div class="card-title">Детектив</div>
       <div class="setting-row"><div><div class="setting-label">Умирает при стрельбе в любого</div><div class="setting-sub">По умолчанию — только при красном</div></div><div class="toggle-switch" id="tog-det-any" onclick="toggleSetting('detDiesAny',this)"></div></div>
     </div>
+    <div class="card">
+      <div class="card-title">🎵 Музыка — ночная фаза</div>
+      <div class="setting-row"><div><div class="setting-label">Включать музыку при переходе в ночь</div></div><div class="toggle-switch" id="tog-night-music" onclick="toggleSetting('nightMusicAuto',this)"></div></div>
+      <div class="setting-row mt8"><div><div class="setting-label">Громкость</div></div>
+        <input type="range" id="music-volume" min="0" max="100" value="20" style="width:120px;accent-color:var(--accent);" oninput="setMusicVolume(this.value)">
+      </div>
+      <div class="card-title" style="margin-top:10px;">Трек</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;">
+        <button class="btn btn-secondary btn-sm" id="trk-0" onclick="selectTrack(0)">🌑 Ночь</button>
+        <button class="btn btn-secondary btn-sm" id="trk-1" onclick="selectTrack(1)">🔮 Мистика</button>
+        <button class="btn btn-secondary btn-sm" id="trk-2" onclick="selectTrack(2)">🌊 Тихая</button>
+      </div>
+    </div>
   </div>
   <div class="bottom-bar"><button class="btn btn-primary btn-full" onclick="startGame()">▶ Начать игру</button></div>
 </div>
@@ -328,6 +353,28 @@ html,body{height:100%;width:100%;overflow:hidden;background:var(--bg);color:var(
   </div>
   <div id="gtab-day" class="scroll-area" style="display:none">
     <div id="night-summary-day"></div>
+    <!-- DAY TIMERS -->
+    <div class="card">
+      <div class="card-title">⏱ Таймеры дня</div>
+      <div style="display:flex;gap:8px;margin-bottom:8px;">
+        <div style="flex:1;text-align:center;">
+          <div style="font-size:10px;color:var(--text2);margin-bottom:4px;">РЕЧЬ ИГРОКА</div>
+          <div class="timer-display" id="day-timer1-display" style="font-size:28px;padding:4px 0;">1:00</div>
+          <input type="number" class="inp" id="day-timer1-secs" value="60" placeholder="сек" style="text-align:center;margin-top:4px;" oninput="setDayTimer(1,this.value)">
+        </div>
+        <div style="flex:1;text-align:center;">
+          <div style="font-size:10px;color:var(--text2);margin-bottom:4px;">ОПРАВДАНИЕ</div>
+          <div class="timer-display" id="day-timer2-display" style="font-size:28px;padding:4px 0;">0:30</div>
+          <input type="number" class="inp" id="day-timer2-secs" value="30" placeholder="сек" style="text-align:center;margin-top:4px;" oninput="setDayTimer(2,this.value)">
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-primary btn-sm" id="day-t1-btn" onclick="startDayTimer(1)" style="flex:1">▶ Речь</button>
+        <button class="btn btn-secondary btn-sm" onclick="resetDayTimer(1)" style="flex:1">↺</button>
+        <button class="btn btn-primary btn-sm" id="day-t2-btn" onclick="startDayTimer(2)" style="flex:1">▶ Оправд.</button>
+        <button class="btn btn-secondary btn-sm" onclick="resetDayTimer(2)" style="flex:1">↺</button>
+      </div>
+    </div>
     <div class="card">
       <div class="card-title">Выставить на голосование</div>
       <div class="vote-grid" id="vote-grid"></div>
@@ -582,8 +629,8 @@ function updateSetupPreview(){
 
 function toggleSetting(key,el){G.settings[key]=!G.settings[key];el.classList.toggle('on',G.settings[key]);}
 function applyToggleUI(){
-  const m={beautySelf:'tog-beauty-self',beautyRepeat:'tog-beauty-repeat',detDiesAny:'tog-det-any',showRoles:'tog-show-roles'};
-  for(const[k,id]of Object.entries(m)){const el=document.getElementById(id);if(el)el.classList.toggle('on',G.settings[k]);}
+  const m={beautySelf:'tog-beauty-self',beautyRepeat:'tog-beauty-repeat',detDiesAny:'tog-det-any',showRoles:'tog-show-roles',nightMusicAuto:'tog-night-music'};
+  for(const[k,id]of Object.entries(m)){const el=document.getElementById(id);if(el)el.classList.toggle('on',!!G.settings[k]);}
 }
 function setDoctorMode(m){G.settings.doctorMode=m;applyDoctorModeUI();}
 function applyDoctorModeUI(){[0,1,2].forEach(i=>{const el=document.getElementById('dmode-'+i);if(el){el.classList.toggle('btn-primary',G.settings.doctorMode===i);el.classList.toggle('btn-secondary',G.settings.doctorMode!==i);}});}
@@ -599,6 +646,31 @@ function renderCustomRoles(){
   document.getElementById('custom-roles-list').innerHTML=G.customRoles.map((r,i)=>`<div class="role-toggle"><div><span style="font-size:14px;font-weight:600;">${r.icon} ${r.name}</span></div><div class="btn-icon" onclick="G.customRoles.splice(${i},1);renderCustomRoles()">🗑</div></div>`).join('');
 }
 
+// ===== ASSIGN MODE =====
+let assignMode='auto';
+function setAssignMode(m){
+  assignMode=m;
+  document.getElementById('mode-auto').className=m==='auto'?'btn btn-primary btn-sm':'btn btn-secondary btn-sm';
+  document.getElementById('mode-manual').className=m==='manual'?'btn btn-primary btn-sm':'btn btn-secondary btn-sm';
+  document.getElementById('auto-mode-block').style.display=m==='auto'?'':'none';
+  document.getElementById('manual-mode-block').style.display=m==='manual'?'':'none';
+  if(m==='manual')renderManualPlayers();
+}
+function renderManualPlayers(){
+  const n=parseInt(document.getElementById('setup-players').value)||10;
+  const allRoleKeys=Object.keys(ROLES_DEF).concat(G.customRoles.map(r=>r.key));
+  const opts=allRoleKeys.map(k=>{const rd=getRoleDef(k);return`<option value="${k}">${rd.name}</option>`;}).join('');
+  let h='';
+  for(let i=1;i<=n;i++){
+    h+=`<div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;">
+      <div style="width:24px;font-weight:700;font-size:13px;color:var(--text2);flex-shrink:0;">#${i}</div>
+      <input class="inp" id="mp-name-${i}" placeholder="Имя" style="flex:1;padding:8px 10px;">
+      <select class="inp" id="mp-role-${i}" style="flex:1;padding:8px 6px;">${opts}</select>
+    </div>`;
+  }
+  document.getElementById('manual-players-list').innerHTML=h;
+}
+
 // ===== START GAME =====
 function startGame(){
   const n=parseInt(document.getElementById('setup-players').value)||10;
@@ -606,22 +678,31 @@ function startGame(){
   G.players=[];G.log=[];G.nightNum=0;G.dayNum=0;G.nightActions={};G.nightResults=null;
   G.beautyLastTarget=null;G.doctorLastTarget=null;G.doctorSelfUsed=false;
 
-  const hasY=G.activeRoles.yakuza;
-  let nM=Math.max(1,Math.round(n*(hasY?.15:.30)));
-  const nY=hasY?Math.max(1,Math.round(n*.15)):0;
-  const nC=Math.max(1,Math.round(n*.30));
-  let pool=[];
-  if(G.activeRoles.don&&nM>1){pool.push('don');nM--;}
-  for(let i=0;i<nM;i++)pool.push('mafia');
-  for(let i=0;i<nY;i++)pool.push('yakuza');
-  const redR=['detective','sheriff','doctor','beauty','maniac','priest','judge','ripper'].filter(r=>G.activeRoles[r]);
-  let nA=n-pool.length-nC,ri=0;
-  while(nA>0&&redR.length>0){pool.push(redR[ri%redR.length]);ri++;nA--;}
-  G.customRoles.forEach(cr=>{if(pool.length<n)pool.push(cr.key);});
-  while(pool.length<n)pool.push('civilian');
-  for(let i=pool.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[pool[i],pool[j]]=[pool[j],pool[i]];}
-  for(let i=0;i<n;i++)G.players.push({num:i+1,name:'Игрок '+(i+1),role:pool[i],alive:true,voted:false,silent:false,immune:false,nominated:false,actions:[]});
-  addLog('info',`🎮 Игра началась. ${n} игроков.`);
+  if(assignMode==='manual'){
+    for(let i=1;i<=n;i++){
+      const name=document.getElementById(`mp-name-${i}`)?.value.trim()||`Игрок ${i}`;
+      const role=document.getElementById(`mp-role-${i}`)?.value||'civilian';
+      G.players.push({num:i,name,role,alive:true,voted:false,silent:false,immune:false,nominated:false,actions:[]});
+    }
+  } else {
+    const hasY=G.activeRoles.yakuza;
+    let nM=Math.max(1,Math.round(n*(hasY?.15:.30)));
+    const nY=hasY?Math.max(1,Math.round(n*.15)):0;
+    const nC=Math.max(1,Math.round(n*.30));
+    let pool=[];
+    if(G.activeRoles.don&&nM>1){pool.push('don');nM--;}
+    for(let i=0;i<nM;i++)pool.push('mafia');
+    for(let i=0;i<nY;i++)pool.push('yakuza');
+    // FIX: каждая активная роль добавляется максимум 1 раз
+    const redR=['detective','sheriff','doctor','beauty','maniac','priest','judge','ripper'].filter(r=>G.activeRoles[r]);
+    let nA=n-pool.length-nC;
+    for(let i=0;i<redR.length&&nA>0;i++){pool.push(redR[i]);nA--;}
+    G.customRoles.forEach(cr=>{if(pool.length<n-Math.max(0,nA))pool.push(cr.key);});
+    while(pool.length<n)pool.push('civilian');
+    for(let i=pool.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[pool[i],pool[j]]=[pool[j],pool[i]];}
+    for(let i=0;i<n;i++)G.players.push({num:i+1,name:'Игрок '+(i+1),role:pool[i],alive:true,voted:false,silent:false,immune:false,nominated:false,actions:[]});
+  }
+  addLog('info',`🎮 Игра началась. ${n} игроков. Режим: ${assignMode==='manual'?'ручной':'авто'}`);
   updateStats();renderPlayerList();
   showScreen('screen-game');
   saveState();
@@ -699,6 +780,8 @@ function goNight(){
   addLog('night',`🌙 === НОЧЬ ${G.nightNum} ===`);
   renderNightSteps();updateStats();renderPlayerList();
   switchGameTab('night');saveState();
+  // Auto-start music on night if enabled
+  if(G.settings.nightMusicAuto&&!musicPlaying){toggleMusic();}
 }
 
 function buildNightSteps(){
@@ -791,6 +874,14 @@ function onNightInput(id,val,stepKey){
   const p=getPlayer(num);
   if(p&&!p.alive){crEl.className='check-result show check-warn';crEl.innerHTML='⚠️ Этот игрок уже мёртв!';return;}
 
+  // Mafia self-shot warning
+  if(id==='mafia-target'&&p&&(p.role==='mafia'||p.role==='don')){
+    crEl.className='check-result show check-warn';
+    crEl.innerHTML=`⚠️ САМОСТРЕЛ! Мафия стреляет в своего (#${num}). <button class="btn btn-danger btn-sm" style="margin-top:4px;" onclick="confirmSelfShot(${num})">Подтвердить</button>`;
+    G.nightActions[id]=0; // block until confirmed
+    return;
+  }
+
   if(id==='sher-target'&&p){
     const rd=getRoleDef(p.role);
     const mafAlive=G.players.some(pl=>pl.alive&&(pl.role==='mafia'||pl.role==='don'));
@@ -823,6 +914,13 @@ function onNightInput(id,val,stepKey){
   crEl.className='check-result';crEl.textContent='';
 }
 
+function confirmSelfShot(num){
+  G.nightActions['mafia-target']=num;
+  const crEl=document.getElementById('cr-mafia-target');
+  if(crEl){crEl.className='check-result show check-warn';crEl.innerHTML=`⚠️ САМОСТРЕЛ подтверждён — #${num}. Зафиксировано в журнале.`;}
+  addLog('death',`⚠️ САМОСТРЕЛ: мафия подтвердила выстрел в своего игрока #${num}`);
+}
+
 function markNoShot(team){
   const k=team==='mafia'?'mafia-target':'yakuza-target';
   G.nightActions[k]=0;const el=document.getElementById(k);if(el)el.value='';
@@ -838,6 +936,27 @@ function showToast(msg){
 function finishNight(){
   const A=G.nightActions;
   const alive=G.players.filter(p=>p.alive);
+
+  // Check for missing roles
+  const missing=[];
+  const aliveRoleChecks=[
+    {id:'mafia-target',cond:alive.some(p=>p.role==='mafia'||p.role==='don'),label:'Мафия'},
+    {id:'beauty-target',cond:G.activeRoles.beauty&&alive.some(p=>p.role==='beauty'),label:'Красотка'},
+    {id:'yakuza-target',cond:G.activeRoles.yakuza&&alive.some(p=>p.role==='yakuza'),label:'Якудза'},
+    {id:'sher-target',cond:G.activeRoles.sheriff&&alive.some(p=>p.role==='sheriff'),label:'Шериф'},
+    {id:'doc-target',cond:G.activeRoles.doctor&&alive.some(p=>p.role==='doctor'),label:'Доктор'},
+    {id:'det-target',cond:G.activeRoles.detective&&alive.some(p=>p.role==='detective'),label:'Детектив'},
+    {id:'judge-target',cond:G.activeRoles.judge&&alive.some(p=>p.role==='judge'),label:'Судья'},
+    {id:'priest-target',cond:G.activeRoles.priest&&alive.some(p=>p.role==='priest'),label:'Священник'},
+    {id:'ripper-target',cond:G.activeRoles.ripper&&alive.some(p=>p.role==='ripper'),label:'Потрошитель'},
+    {id:'maniac-target',cond:G.activeRoles.maniac&&alive.some(p=>p.role==='maniac'),label:'Маньяк'},
+    {id:'don-check-target',cond:G.activeRoles.don&&alive.some(p=>p.role==='don'),label:'Дон'},
+  ];
+  aliveRoleChecks.forEach(r=>{if(r.cond&&!(A[r.id]>0))missing.push(r.label);});
+  if(missing.length>0){
+    if(!confirm(`⚠️ Не заполнены роли: ${missing.join(', ')}.\nПродолжить всё равно?`))return;
+  }
+
   const beautyTarget=A['beauty-target']||0;
   const docTarget=A['doc-target']||0;
   const mafiaTarget=A['mafia-target']||0;
@@ -851,8 +970,8 @@ function finishNight(){
   const donCheck=A['don-check-target']||0;
 
   const killed=new Set(),saved=new Set();
-  const announceResults=[];  // объявляется игрокам
-  const privateResults=[];   // только ведущий
+  const announceResults=[];
+  const privateResults=[];
 
   // Judge
   if(judgeTarget>0){const p=getPlayer(judgeTarget);if(p&&p.alive){p.immune=true;p.actions.push(`Ночь ${G.nightNum}: иммунитет от Судьи`);privateResults.push({icon:'⚖️',text:`Судья → иммунитет <strong>#${judgeTarget}</strong>. Днём нельзя выголосовать.`});addLog('info',`⚖️ Судья → #${judgeTarget}`);}}
@@ -1055,18 +1174,54 @@ function buildVoteGrid(){
   updateNomList();
 }
 
-function toggleNom(num){const p=getPlayer(num);if(!p||!p.alive)return;p.nominated=!p.nominated;const c=document.getElementById('vcell-'+num);if(c)c.classList.toggle('nominated',p.nominated);updateNomList();}
-function updateNomList(){const el=document.getElementById('nominated-list');if(!el)return;const n=G.players.filter(p=>p.nominated&&p.alive);el.innerHTML=n.length?'На голосовании: '+n.map(p=>`<strong>#${p.num}</strong>`).join(', '):'Никто не выставлен';}
+// Track nomination order
+if(!G.nominationOrder)G.nominationOrder=[];
+
+function toggleNom(num){
+  const p=getPlayer(num);if(!p||!p.alive)return;
+  p.nominated=!p.nominated;
+  if(p.nominated){if(!G.nominationOrder.includes(num))G.nominationOrder.push(num);}
+  else{G.nominationOrder=G.nominationOrder.filter(n=>n!==num);}
+  const c=document.getElementById('vcell-'+num);if(c)c.classList.toggle('nominated',p.nominated);
+  updateNomList();
+}
+function updateNomList(){
+  const el=document.getElementById('nominated-list');if(!el)return;
+  // Show in nomination order
+  const ordered=(G.nominationOrder||[]).map(n=>getPlayer(n)).filter(p=>p&&p.nominated&&p.alive);
+  el.innerHTML=ordered.length?'На голосовании: '+ordered.map(p=>`<strong>#${p.num}</strong>`).join(', '):'Никто не выставлен';
+}
 
 function voteNominated(){
-  const n=G.players.filter(p=>p.nominated&&p.alive);
-  if(!n.length){showWarn('Никто не выставлен.');return;}
-  n.forEach(p=>{
+  const ordered=(G.nominationOrder||[]).map(n=>getPlayer(n)).filter(p=>p&&p.nominated&&p.alive);
+  if(!ordered.length){showWarn('Никто не выставлен.');return;}
+  ordered.forEach(p=>{
     if(p.immune){showWarn(`⚖️ Игрок #${p.num} имеет иммунитет от Судьи! Остаётся в игре.`);p.nominated=false;return;}
     p.alive=false;p.voted=true;p.nominated=false;
     addLog('day',`🗳 #${p.num} ${p.name} (${getRoleDef(p.role).name}) выголосован`);
   });
+  G.nominationOrder=[];
   updateStats();renderPlayerList();buildVoteGrid();saveState();
+}
+
+// ===== DAY TIMERS =====
+let dayTimers={1:{secs:60,running:false,interval:null},2:{secs:30,running:false,interval:null}};
+function setDayTimer(n,v){dayTimers[n].secs=parseInt(v)||60;updateDayTimerDisplay(n,dayTimers[n].secs);}
+function updateDayTimerDisplay(n,s){const el=document.getElementById(`day-timer${n}-display`);if(el){const m=Math.floor(s/60),sc=s%60;el.textContent=`${m}:${sc.toString().padStart(2,'0')}`;el.classList.toggle('warning',s<=5);}}
+function startDayTimer(n){
+  const t=dayTimers[n];
+  if(t.running){clearInterval(t.interval);t.running=false;document.getElementById(`day-t${n}-btn`).textContent=n===1?'▶ Речь':'▶ Оправд.';return;}
+  t.running=true;document.getElementById(`day-t${n}-btn`).textContent='⏸ Стоп';
+  t.interval=setInterval(()=>{
+    t.secs--;updateDayTimerDisplay(n,t.secs);
+    if(t.secs<=0){clearInterval(t.interval);t.running=false;document.getElementById(`day-t${n}-btn`).textContent=n===1?'▶ Речь':'▶ Оправд.';playAlarm(alarmType);}
+  },1000);
+}
+function resetDayTimer(n){
+  const t=dayTimers[n];clearInterval(t.interval);t.running=false;
+  document.getElementById(`day-t${n}-btn`).textContent=n===1?'▶ Речь':'▶ Оправд.';
+  const secs=parseInt(document.getElementById(`day-timer${n}-secs`)?.value)||( n===1?60:30);
+  t.secs=secs;updateDayTimerDisplay(n,secs);
 }
 
 // ===== WIN CHECK =====
@@ -1131,9 +1286,11 @@ function startTimer(){if(timerRunning){clearInterval(timerInterval);timerRunning
 function resetTimer(){clearInterval(timerInterval);timerRunning=false;document.getElementById('timer-start-btn').textContent='▶ Старт';setTimer(timerSecs);}
 function testAlarm(t){alarmType=t;playAlarm(t);}
 function playAlarm(type){try{const ctx=getAudioCtx();const seqs=[[880,.1,0,.1,880,.1,0,.1,880,.3],[220,.3,110,.3,165,.5],[523,.1,659,.1,784,.1,1047,.4],[440,.05,0,.05,440,.05,0,.05,440,.3]];const seq=seqs[type]||seqs[0];let t=ctx.currentTime;for(let i=0;i<seq.length;i+=2){const f=seq[i],d=seq[i+1];if(f>0){const o=ctx.createOscillator(),g=ctx.createGain();o.connect(g);g.connect(ctx.destination);o.frequency.value=f;g.gain.setValueAtTime(.3,t);g.gain.exponentialRampToValueAtTime(.01,t+d);o.start(t);o.stop(t+d);}t+=d;}}catch(e){}}
-function toggleMusic(){if(musicPlaying){try{musicGain?.disconnect();}catch(e){}musicPlaying=false;document.getElementById('music-btn').textContent='▶ Включить';}else{playAmbient();musicPlaying=true;document.getElementById('music-btn').textContent='⏹ Выключить';}}
-function playAmbient(){try{const ctx=getAudioCtx();const freqs=[[55,110,165],[73,110,147],[65,98,130]][musicTrack%3];musicGain=ctx.createGain();musicGain.gain.value=.05;musicGain.connect(ctx.destination);freqs.forEach(f=>{const o=ctx.createOscillator();o.type='sine';o.frequency.value=f;o.connect(musicGain);o.start();});}catch(e){}}
-function nextTrack(){musicTrack++;if(musicPlaying){try{musicGain?.disconnect();}catch(e){}playAmbient();}}
+function toggleMusic(){if(musicPlaying){try{musicGain?.disconnect();}catch(e){}musicPlaying=false;const btn=document.getElementById('music-btn');if(btn)btn.textContent='▶ Включить';}else{playAmbient();musicPlaying=true;const btn=document.getElementById('music-btn');if(btn)btn.textContent='⏹ Выключить';}}
+function setMusicVolume(v){if(musicGain)musicGain.gain.value=parseInt(v)/500;G.settings.musicVolume=parseInt(v);}
+function selectTrack(i){musicTrack=i;[0,1,2].forEach(j=>{const el=document.getElementById('trk-'+j);if(el){el.className=j===i?'btn btn-primary btn-sm':'btn btn-secondary btn-sm';}});if(musicPlaying){try{musicGain?.disconnect();}catch(e){}playAmbient();}}
+function playAmbient(){try{const ctx=getAudioCtx();const freqs=[[55,110,165],[73,110,147],[65,98,130]][musicTrack%3];musicGain=ctx.createGain();musicGain.gain.value=(G.settings.musicVolume||20)/500;musicGain.connect(ctx.destination);freqs.forEach(f=>{const o=ctx.createOscillator();o.type='sine';o.frequency.value=f;o.connect(musicGain);o.start();});}catch(e){}}
+function nextTrack(){musicTrack=(musicTrack+1)%3;selectTrack(musicTrack);}
 
 // ===== SIMULATION =====
 function showSimulation(){renderSimRoles();showScreen('screen-sim');}

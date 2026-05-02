@@ -250,7 +250,6 @@ html,body{height:100%;width:100%;overflow:hidden;background:var(--bg);color:var(
     <div class="tab" onclick="setupTab('roles',this)">Роли</div>
     <div class="tab" onclick="setupTab('settings',this)">Настройки</div>
   </div>
-  <div id="setup-general" class="scroll-area">
     <div class="card">
       <div class="card-title">Режим раздачи ролей</div>
       <div style="display:flex;gap:8px;margin-bottom:10px;">
@@ -280,7 +279,12 @@ html,body{height:100%;width:100%;overflow:hidden;background:var(--bg);color:var(
     </div>
   </div>
   <div id="setup-roles" class="scroll-area" style="display:none">
-    <div class="card"><div class="card-title">Активные роли</div><div id="roles-toggles"></div></div>
+    <div class="card">
+      <div class="card-title">Активные роли в игре</div>
+      <div class="text-muted mb8" style="font-size:12px;">Авто-раздача использует только выбранные роли. При ручном вводе — доступны только они (если включён фильтр ниже).</div>
+      <div class="setting-row mb8"><div><div class="setting-label">Фильтровать ручной ввод</div><div class="setting-sub">Только активные роли доступны в ручном режиме</div></div><div class="toggle-switch" id="tog-filter-manual" onclick="toggleSetting('filterManual',this)"></div></div>
+      <div id="roles-toggles"></div>
+    </div>
   </div>
   <div id="setup-settings" class="scroll-area" style="display:none">
     <div class="card">
@@ -308,8 +312,8 @@ html,body{height:100%;width:100%;overflow:hidden;background:var(--bg);color:var(
       <div class="setting-row"><div><div class="setting-label">Умирает при стрельбе в любого</div><div class="setting-sub">По умолчанию — только при красном</div></div><div class="toggle-switch" id="tog-det-any" onclick="toggleSetting('detDiesAny',this)"></div></div>
     </div>
     <div class="card">
-      <div class="card-title">🎵 Музыка — ночная фаза</div>
-      <div class="setting-row"><div><div class="setting-label">Включать музыку при переходе в ночь</div></div><div class="toggle-switch" id="tog-night-music" onclick="toggleSetting('nightMusicAuto',this)"></div></div>
+      <div class="card-title">🎵 Музыка</div>
+      <div class="setting-row"><div><div class="setting-label">Авто-включение при ночи</div></div><div class="toggle-switch" id="tog-night-music" onclick="toggleSetting('nightMusicAuto',this)"></div></div>
       <div class="setting-row mt8"><div><div class="setting-label">Громкость</div></div>
         <input type="range" id="music-volume" min="0" max="100" value="20" style="width:120px;accent-color:var(--accent);" oninput="setMusicVolume(this.value)">
       </div>
@@ -318,6 +322,22 @@ html,body{height:100%;width:100%;overflow:hidden;background:var(--bg);color:var(
         <button class="btn btn-secondary btn-sm" id="trk-0" onclick="selectTrack(0)">🌑 Ночь</button>
         <button class="btn btn-secondary btn-sm" id="trk-1" onclick="selectTrack(1)">🔮 Мистика</button>
         <button class="btn btn-secondary btn-sm" id="trk-2" onclick="selectTrack(2)">🌊 Тихая</button>
+        <button class="btn btn-secondary btn-sm" onclick="pickMusicFile()">📁 С телефона</button>
+      </div>
+      <input type="file" id="music-file-input" accept="audio/*" style="display:none" onchange="loadMusicFile(this)">
+    </div>
+    <div class="card">
+      <div class="card-title">🔔 Будильник</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
+        <button class="btn btn-secondary btn-sm" onclick="testAlarm(0)">🔔 Классика</button>
+        <button class="btn btn-secondary btn-sm" onclick="testAlarm(1)">🎵 Низкий</button>
+        <button class="btn btn-secondary btn-sm" onclick="testAlarm(2)">📯 Горн</button>
+        <button class="btn btn-secondary btn-sm" onclick="testAlarm(3)">🔊 Пульс</button>
+      </div>
+      <div class="setting-row"><div><div class="setting-label">Повторений будильника</div></div>
+        <select class="inp" id="alarm-repeats" style="width:80px;padding:6px;" onchange="G.settings.alarmRepeats=parseInt(this.value)">
+          <option value="1">1</option><option value="2">2</option><option value="3" selected>3</option><option value="5">5</option>
+        </select>
       </div>
     </div>
   </div>
@@ -329,6 +349,7 @@ html,body{height:100%;width:100%;overflow:hidden;background:var(--bg);color:var(
   <div class="hdr">
     <div><div class="hdr-title" id="game-phase-title">Ночь 1</div><div class="hdr-sub" id="game-phase-sub">Ночная фаза</div></div>
     <div style="display:flex;gap:6px;">
+      <div class="btn-icon" id="hdr-music-btn" onclick="toggleMusic()" title="Музыка">♪</div>
       <div class="btn-icon" onclick="showScreen('screen-timer')">⏱</div>
       <div class="btn-icon" onclick="showNotes()">📝</div>
       <div class="btn-icon" onclick="endGame()">⏹</div>
@@ -353,26 +374,35 @@ html,body{height:100%;width:100%;overflow:hidden;background:var(--bg);color:var(
   </div>
   <div id="gtab-day" class="scroll-area" style="display:none">
     <div id="night-summary-day"></div>
-    <!-- DAY TIMERS -->
     <div class="card">
       <div class="card-title">⏱ Таймеры дня</div>
       <div style="display:flex;gap:8px;margin-bottom:8px;">
         <div style="flex:1;text-align:center;">
           <div style="font-size:10px;color:var(--text2);margin-bottom:4px;">РЕЧЬ ИГРОКА</div>
           <div class="timer-display" id="day-timer1-display" style="font-size:28px;padding:4px 0;">1:00</div>
-          <input type="number" class="inp" id="day-timer1-secs" value="60" placeholder="сек" style="text-align:center;margin-top:4px;" oninput="setDayTimer(1,this.value)">
+          <div style="display:flex;gap:4px;flex-wrap:wrap;justify-content:center;margin-top:4px;">
+            <span class="timer-preset" style="padding:4px 6px;font-size:11px;" onclick="setDayTimerPreset(1,10)">10с</span>
+            <span class="timer-preset" style="padding:4px 6px;font-size:11px;" onclick="setDayTimerPreset(1,20)">20с</span>
+            <span class="timer-preset" style="padding:4px 6px;font-size:11px;" onclick="setDayTimerPreset(1,30)">30с</span>
+            <span class="timer-preset" style="padding:4px 6px;font-size:11px;" onclick="setDayTimerPreset(1,60)">1м</span>
+            <span class="timer-preset" style="padding:4px 6px;font-size:11px;" onclick="setDayTimerPreset(1,120)">2м</span>
+          </div>
         </div>
         <div style="flex:1;text-align:center;">
           <div style="font-size:10px;color:var(--text2);margin-bottom:4px;">ОПРАВДАНИЕ</div>
           <div class="timer-display" id="day-timer2-display" style="font-size:28px;padding:4px 0;">0:30</div>
-          <input type="number" class="inp" id="day-timer2-secs" value="30" placeholder="сек" style="text-align:center;margin-top:4px;" oninput="setDayTimer(2,this.value)">
+          <div style="display:flex;gap:4px;flex-wrap:wrap;justify-content:center;margin-top:4px;">
+            <span class="timer-preset" style="padding:4px 6px;font-size:11px;" onclick="setDayTimerPreset(2,10)">10с</span>
+            <span class="timer-preset" style="padding:4px 6px;font-size:11px;" onclick="setDayTimerPreset(2,20)">20с</span>
+            <span class="timer-preset" style="padding:4px 6px;font-size:11px;" onclick="setDayTimerPreset(2,30)">30с</span>
+            <span class="timer-preset" style="padding:4px 6px;font-size:11px;" onclick="setDayTimerPreset(2,60)">1м</span>
+            <span class="timer-preset" style="padding:4px 6px;font-size:11px;" onclick="setDayTimerPreset(2,120)">2м</span>
+          </div>
         </div>
       </div>
       <div style="display:flex;gap:8px;">
         <button class="btn btn-primary btn-sm" id="day-t1-btn" onclick="startDayTimer(1)" style="flex:1">▶ Речь</button>
-        <button class="btn btn-secondary btn-sm" onclick="resetDayTimer(1)" style="flex:1">↺</button>
         <button class="btn btn-primary btn-sm" id="day-t2-btn" onclick="startDayTimer(2)" style="flex:1">▶ Оправд.</button>
-        <button class="btn btn-secondary btn-sm" onclick="resetDayTimer(2)" style="flex:1">↺</button>
       </div>
     </div>
     <div class="card">
@@ -383,7 +413,7 @@ html,body{height:100%;width:100%;overflow:hidden;background:var(--bg);color:var(
     </div>
     <div class="card">
       <div class="card-title">Управление фазами</div>
-      <div class="row mb8"><button class="btn btn-secondary" style="flex:1" onclick="goNight()">🌙 Ночь</button><button class="btn btn-secondary" style="flex:1" onclick="checkWin()">🏆 Победа?</button></div>
+      <div class="row mb8"><button class="btn btn-secondary" style="flex:1" onclick="goNight()">🌙 Следующая ночь</button><button class="btn btn-secondary" style="flex:1" onclick="checkWin()">🏆 Победа?</button></div>
       <button class="btn btn-secondary btn-full" onclick="returnToNightEdit()">↩ Вернуться к правке ночи</button>
     </div>
   </div>
@@ -627,9 +657,9 @@ function updateSetupPreview(){
     <div>Всего: <strong style="color:var(--accent)">${n}</strong></div></div>`;
 }
 
-function toggleSetting(key,el){G.settings[key]=!G.settings[key];el.classList.toggle('on',G.settings[key]);}
+function toggleSetting(key,el){G.settings[key]=!G.settings[key];el.classList.toggle('on',G.settings[key]);if(key==='filterManual'&&assignMode==='manual')renderManualPlayers();}
 function applyToggleUI(){
-  const m={beautySelf:'tog-beauty-self',beautyRepeat:'tog-beauty-repeat',detDiesAny:'tog-det-any',showRoles:'tog-show-roles',nightMusicAuto:'tog-night-music'};
+  const m={beautySelf:'tog-beauty-self',beautyRepeat:'tog-beauty-repeat',detDiesAny:'tog-det-any',showRoles:'tog-show-roles',nightMusicAuto:'tog-night-music',filterManual:'tog-filter-manual'};
   for(const[k,id]of Object.entries(m)){const el=document.getElementById(id);if(el)el.classList.toggle('on',!!G.settings[k]);}
 }
 function setDoctorMode(m){G.settings.doctorMode=m;applyDoctorModeUI();}
@@ -658,17 +688,21 @@ function setAssignMode(m){
 }
 function renderManualPlayers(){
   const n=parseInt(document.getElementById('setup-players').value)||10;
+  const useFilter=G.settings.filterManual;
   const allRoleKeys=Object.keys(ROLES_DEF).concat(G.customRoles.map(r=>r.key));
-  const opts=allRoleKeys.map(k=>{const rd=getRoleDef(k);return`<option value="${k}">${rd.name}</option>`;}).join('');
+  const filteredKeys=useFilter?allRoleKeys.filter(k=>k==='civilian'||G.activeRoles[k]):allRoleKeys;
+  const opts=filteredKeys.map(k=>{const rd=getRoleDef(k);return`<option value="${k}">${rd.name}</option>`;}).join('');
   let h='';
   for(let i=1;i<=n;i++){
+    const prev=G.players.find(p=>p.num===i);
     h+=`<div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;">
       <div style="width:24px;font-weight:700;font-size:13px;color:var(--text2);flex-shrink:0;">#${i}</div>
-      <input class="inp" id="mp-name-${i}" placeholder="Имя" style="flex:1;padding:8px 10px;">
+      <input class="inp" id="mp-name-${i}" placeholder="Имя" style="flex:1;padding:8px 10px;" value="${prev?prev.name:''}">
       <select class="inp" id="mp-role-${i}" style="flex:1;padding:8px 6px;">${opts}</select>
     </div>`;
   }
   document.getElementById('manual-players-list').innerHTML=h;
+  G.players.forEach(p=>{const el=document.getElementById(`mp-role-${p.num}`);if(el)el.value=p.role;});
 }
 
 // ===== START GAME =====
@@ -679,11 +713,31 @@ function startGame(){
   G.beautyLastTarget=null;G.doctorLastTarget=null;G.doctorSelfUsed=false;
 
   if(assignMode==='manual'){
+    const roles=[];
     for(let i=1;i<=n;i++){
       const name=document.getElementById(`mp-name-${i}`)?.value.trim()||`Игрок ${i}`;
       const role=document.getElementById(`mp-role-${i}`)?.value||'civilian';
-      G.players.push({num:i,name,role,alive:true,voted:false,silent:false,immune:false,nominated:false,actions:[]});
+      roles.push({num:i,name,role});
     }
+    // Validate proportions
+    const mafCount=roles.filter(p=>p.role==='mafia'||p.role==='don').length;
+    const yakCount=roles.filter(p=>p.role==='yakuza').length;
+    const civCount=roles.filter(p=>p.role==='civilian').length;
+    const hasY=yakCount>0;
+    const expMaf=Math.round(n*(hasY?.15:.30));
+    const expYak=hasY?Math.round(n*.15):0;
+    const expCiv=Math.round(n*.30);
+    const warns=[];
+    if(Math.abs(mafCount-expMaf)>1)warns.push(`Мафия: ${mafCount} (ожидалось ~${expMaf})`);
+    if(hasY&&Math.abs(yakCount-expYak)>1)warns.push(`Якудза: ${yakCount} (ожидалось ~${expYak})`);
+    if(Math.abs(civCount-expCiv)>1)warns.push(`Обыватели: ${civCount} (ожидалось ~${expCiv})`);
+    if(warns.length>0){
+      if(!confirm(`⚠️ Пропорции нарушены:\n${warns.join('\n')}\n\nПродолжить с текущими ролями?`)){
+        // Return to manual editing — stay on setup screen
+        showSetup();setAssignMode('manual');return;
+      }
+    }
+    roles.forEach(r=>G.players.push({...r,alive:true,voted:false,silent:false,immune:false,nominated:false,actions:[]}));
   } else {
     const hasY=G.activeRoles.yakuza;
     let nM=Math.max(1,Math.round(n*(hasY?.15:.30)));
@@ -894,9 +948,22 @@ function onNightInput(id,val,stepKey){
   if(id==='don-check-target'&&p){
     const is=p.role==='sheriff';crEl.className='check-result show '+(is?'check-warn':'check-red');crEl.innerHTML=is?'⭐ ЭТО ШЕРИФ!':'Не Шериф';return;
   }
+  if(id==='det-action'){
+    if(num!==1&&num!==2&&num>0){crEl.className='check-result show check-warn';crEl.innerHTML='⚠️ Введите 1 (стрелять) или 2 (проверить)';G.nightActions[id]=0;return;}
+    crEl.className='check-result';crEl.textContent='';
+    // Re-check target if already filled
+    const tEl=document.getElementById('det-target');if(tEl&&tEl.value)onNightInput('det-target',tEl.value,'detective');
+    return;
+  }
   if(id==='det-target'&&p){
     const act=parseInt(document.getElementById('det-action')?.value)||0;
-    if(act===2){const rd=getRoleDef(p.role);const isB=rd.team==='mafia'||rd.team==='yakuza';crEl.className='check-result show '+(isB?'check-black':'check-red');crEl.innerHTML=isB?`⚫ ЧЁРНЫЙ — ${rd.name}`:`🔴 КРАСНЫЙ — ${rd.name}`;return;}
+    if(act===2){
+      const rd=getRoleDef(p.role);const isB=rd.team==='mafia'||rd.team==='yakuza';
+      crEl.className='check-result show '+(isB?'check-black':'check-red');
+      crEl.innerHTML=isB?`⚫ ЧЁРНЫЙ — ${rd.name}`:`🔴 КРАСНЫЙ — ${rd.name}`;return;
+    }
+    if(act===1){crEl.className='check-result show check-warn';crEl.innerHTML=`🔫 Детектив стреляет в #${num}`;return;}
+    crEl.className='check-result';crEl.textContent='';return;
   }
   if(id==='doc-target'){
     if(G.settings.doctorMode===1&&G.doctorLastTarget===num){crEl.className='check-result show check-warn';crEl.innerHTML='⚠️ Тот же игрок что и прошлый раз!';return;}
@@ -1205,23 +1272,22 @@ function voteNominated(){
 }
 
 // ===== DAY TIMERS =====
-let dayTimers={1:{secs:60,running:false,interval:null},2:{secs:30,running:false,interval:null}};
-function setDayTimer(n,v){dayTimers[n].secs=parseInt(v)||60;updateDayTimerDisplay(n,dayTimers[n].secs);}
+let dayTimers={1:{secs:60,base:60,running:false,interval:null},2:{secs:30,base:30,running:false,interval:null}};
+function setDayTimerPreset(n,s){
+  const t=dayTimers[n];clearInterval(t.interval);t.running=false;t.secs=s;t.base=s;
+  updateDayTimerDisplay(n,s);document.getElementById(`day-t${n}-btn`).textContent=n===1?'▶ Речь':'▶ Оправд.';
+}
 function updateDayTimerDisplay(n,s){const el=document.getElementById(`day-timer${n}-display`);if(el){const m=Math.floor(s/60),sc=s%60;el.textContent=`${m}:${sc.toString().padStart(2,'0')}`;el.classList.toggle('warning',s<=5);}}
 function startDayTimer(n){
   const t=dayTimers[n];
-  if(t.running){clearInterval(t.interval);t.running=false;document.getElementById(`day-t${n}-btn`).textContent=n===1?'▶ Речь':'▶ Оправд.';return;}
+  // Always reset and start fresh on press
+  clearInterval(t.interval);t.running=false;
+  t.secs=t.base;updateDayTimerDisplay(n,t.secs);
   t.running=true;document.getElementById(`day-t${n}-btn`).textContent='⏸ Стоп';
   t.interval=setInterval(()=>{
     t.secs--;updateDayTimerDisplay(n,t.secs);
-    if(t.secs<=0){clearInterval(t.interval);t.running=false;document.getElementById(`day-t${n}-btn`).textContent=n===1?'▶ Речь':'▶ Оправд.';playAlarm(alarmType);}
+    if(t.secs<=0){clearInterval(t.interval);t.running=false;document.getElementById(`day-t${n}-btn`).textContent=n===1?'▶ Речь':'▶ Оправд.';playAlarmRepeated();}
   },1000);
-}
-function resetDayTimer(n){
-  const t=dayTimers[n];clearInterval(t.interval);t.running=false;
-  document.getElementById(`day-t${n}-btn`).textContent=n===1?'▶ Речь':'▶ Оправд.';
-  const secs=parseInt(document.getElementById(`day-timer${n}-secs`)?.value)||( n===1?60:30);
-  t.secs=secs;updateDayTimerDisplay(n,secs);
 }
 
 // ===== WIN CHECK =====
@@ -1284,9 +1350,44 @@ function setTimer(s){timerSecs=s;updateTimerDisplay(s);document.querySelectorAll
 function updateTimerDisplay(s){const m=Math.floor(s/60),sc=s%60;const el=document.getElementById('timer-display');if(el){el.textContent=`${m}:${sc.toString().padStart(2,'0')}`;el.classList.toggle('warning',s<=10);}}
 function startTimer(){if(timerRunning){clearInterval(timerInterval);timerRunning=false;document.getElementById('timer-start-btn').textContent='▶ Старт';return;}timerRunning=true;document.getElementById('timer-start-btn').textContent='⏸ Пауза';timerInterval=setInterval(()=>{timerSecs--;updateTimerDisplay(timerSecs);if(timerSecs<=0){clearInterval(timerInterval);timerRunning=false;document.getElementById('timer-start-btn').textContent='▶ Старт';playAlarm(alarmType);}},1000);}
 function resetTimer(){clearInterval(timerInterval);timerRunning=false;document.getElementById('timer-start-btn').textContent='▶ Старт';setTimer(timerSecs);}
-function testAlarm(t){alarmType=t;playAlarm(t);}
+function testAlarm(t){alarmType=t;playAlarmRepeated();}
+function playAlarmRepeated(){
+  const repeats=G.settings.alarmRepeats||3;
+  let i=0;
+  const fire=()=>{playAlarm(alarmType);i++;if(i<repeats)setTimeout(fire,1200);};
+  fire();
+}
 function playAlarm(type){try{const ctx=getAudioCtx();const seqs=[[880,.1,0,.1,880,.1,0,.1,880,.3],[220,.3,110,.3,165,.5],[523,.1,659,.1,784,.1,1047,.4],[440,.05,0,.05,440,.05,0,.05,440,.3]];const seq=seqs[type]||seqs[0];let t=ctx.currentTime;for(let i=0;i<seq.length;i+=2){const f=seq[i],d=seq[i+1];if(f>0){const o=ctx.createOscillator(),g=ctx.createGain();o.connect(g);g.connect(ctx.destination);o.frequency.value=f;g.gain.setValueAtTime(.3,t);g.gain.exponentialRampToValueAtTime(.01,t+d);o.start(t);o.stop(t+d);}t+=d;}}catch(e){}}
-function toggleMusic(){if(musicPlaying){try{musicGain?.disconnect();}catch(e){}musicPlaying=false;const btn=document.getElementById('music-btn');if(btn)btn.textContent='▶ Включить';}else{playAmbient();musicPlaying=true;const btn=document.getElementById('music-btn');if(btn)btn.textContent='⏹ Выключить';}}
+
+// Music file from phone
+let customAudio=null;
+function pickMusicFile(){document.getElementById('music-file-input').click();}
+function loadMusicFile(input){
+  const file=input.files[0];if(!file)return;
+  const url=URL.createObjectURL(file);
+  customAudio=new Audio(url);customAudio.loop=true;
+  if(musicPlaying){try{musicGain?.disconnect();}catch(e){}musicPlaying=false;}
+  musicTrack=99;// flag custom
+  toggleMusic();
+  showToast(`🎵 Загружено: ${file.name}`);
+}
+function toggleMusic(){
+  const hbtn=document.getElementById('hdr-music-btn');
+  const mbtn=document.getElementById('music-btn');
+  if(musicPlaying){
+    if(musicTrack===99&&customAudio){try{customAudio.pause();}catch(e){}}
+    else{try{musicGain?.disconnect();}catch(e){}}
+    musicPlaying=false;
+    if(mbtn)mbtn.textContent='▶ Включить';
+    if(hbtn){hbtn.textContent='♪';hbtn.style.color='';}
+  } else {
+    if(musicTrack===99&&customAudio){customAudio.play().catch(()=>{});}
+    else playAmbient();
+    musicPlaying=true;
+    if(mbtn)mbtn.textContent='⏹ Выключить';
+    if(hbtn){hbtn.textContent='🎵';hbtn.style.color='var(--accent)';}
+  }
+}
 function setMusicVolume(v){if(musicGain)musicGain.gain.value=parseInt(v)/500;G.settings.musicVolume=parseInt(v);}
 function selectTrack(i){musicTrack=i;[0,1,2].forEach(j=>{const el=document.getElementById('trk-'+j);if(el){el.className=j===i?'btn btn-primary btn-sm':'btn btn-secondary btn-sm';}});if(musicPlaying){try{musicGain?.disconnect();}catch(e){}playAmbient();}}
 function playAmbient(){try{const ctx=getAudioCtx();const freqs=[[55,110,165],[73,110,147],[65,98,130]][musicTrack%3];musicGain=ctx.createGain();musicGain.gain.value=(G.settings.musicVolume||20)/500;musicGain.connect(ctx.destination);freqs.forEach(f=>{const o=ctx.createOscillator();o.type='sine';o.frequency.value=f;o.connect(musicGain);o.start();});}catch(e){}}

@@ -153,6 +153,7 @@ html,body{height:100%;width:100%;overflow:hidden;background:var(--bg);color:var(
 .vote-cell.nominated{border-color:var(--red2);background:rgba(192,57,43,.2);color:var(--red2);}
 .vote-cell.voted-out{border-color:#888;background:rgba(100,100,100,.2);color:#888;}
 .vote-cell.dead-cell{opacity:.25;pointer-events:none;}
+.vote-cell.immune-cell{border-color:#f39c12;background:rgba(243,156,18,.15);color:#f39c12;}
 #toast{position:fixed;top:60px;left:50%;transform:translateX(-50%);background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:8px 16px;font-size:13px;z-index:300;pointer-events:none;opacity:0;transition:opacity .3s;}
 /* JOIN */
 #screen-join{justify-content:center;padding:20px;}
@@ -196,8 +197,14 @@ html,body{height:100%;width:100%;overflow:hidden;background:var(--bg);color:var(
   <div class="scroll-area" style="display:flex;flex-direction:column;justify-content:center;">
     <div class="join-card">
       <div class="join-title">🃏 Получить роль</div>
-      <div class="form-group"><label class="inp-label">Пароль игры</label><input class="inp" id="join-password" type="password" placeholder="Введите пароль"></div>
-      <div class="form-group"><label class="inp-label">Ваш номер за столом</label><input class="inp" id="join-num" type="number" placeholder="Например: 3"></div>
+      <div class="form-group">
+        <label class="inp-label">Пароль игры</label>
+        <div style="display:flex;gap:6px;align-items:center;">
+          <input class="inp" id="join-password" type="password" placeholder="Введите пароль" style="flex:1;">
+          <div class="btn-icon" onclick="toggleJoinPw()" id="join-pw-eye" title="Показать пароль">👁</div>
+        </div>
+      </div>
+      <div class="form-group"><label class="inp-label">Ваш номер за столом</label><input class="inp" id="join-num" type="number" placeholder="Например: 3" min="1"></div>
       <div class="form-group"><label class="inp-label">Ваше игровое имя</label><input class="inp" id="join-name" type="text" placeholder="Введите имя"></div>
       <button class="btn btn-primary btn-full mt8" onclick="joinGame()">Получить роль →</button>
     </div>
@@ -207,6 +214,7 @@ html,body{height:100%;width:100%;overflow:hidden;background:var(--bg);color:var(
 <!-- ROLE REVEAL -->
 <div id="screen-role-reveal" class="screen">
   <div class="rr-card">
+    <div id="rr-player-info" style="font-size:12px;color:var(--text2);margin-bottom:4px;"></div>
     <div id="rr-icon" class="rr-icon">🃏</div>
     <div id="rr-name" class="rr-name">—</div>
     <div id="rr-team" class="rr-team"></div>
@@ -287,7 +295,13 @@ html,body{height:100%;width:100%;overflow:hidden;background:var(--bg);color:var(
     </div>
     <div class="card">
       <div class="card-title">🎵 Музыка</div>
-      <div class="setting-row"><div><div class="setting-label">Авто-включение при ночи</div></div><div class="toggle-switch" id="tog-night-music" onclick="toggleSetting('nightMusicAuto',this)"></div></div>
+      <div class="card-title" style="margin-top:0;">Режим музыки</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;">
+        <button class="btn btn-secondary btn-sm" id="mmode-manual" onclick="setMusicMode('manual')" style="flex:1">🎛 Вручную</button>
+        <button class="btn btn-primary btn-sm" id="mmode-auto" onclick="setMusicMode('auto')" style="flex:1">🌙 Авто</button>
+      </div>
+      <div class="text-muted" id="mmode-desc" style="font-size:11px;margin-bottom:4px;">Авто: вкл при ночи, выкл при дне. Кнопка ♪ — пауза.</div>
+      <div class="text-muted" style="font-size:10px;margin-bottom:4px;">🔵 Bluetooth: подключите колонку в ОС до старта — браузер использует системный аудиовыход автоматически.</div>
       <div style="display:flex;align-items:center;gap:10px;margin-top:8px;">
         <span class="inp-label" style="white-space:nowrap;margin-bottom:0;">Громкость</span>
         <input type="range" id="music-volume" min="1" max="100" value="20" style="flex:1;accent-color:var(--accent);" oninput="setMusicVolume(this.value)">
@@ -440,6 +454,7 @@ html,body{height:100%;width:100%;overflow:hidden;background:var(--bg);color:var(
     <div class="card-title mb8">Музыка</div>
     <div style="display:flex;gap:8px;">
       <button class="btn btn-secondary" style="flex:1" id="music-btn" onclick="toggleMusic()">▶ Включить</button>
+      <button class="btn btn-secondary" style="flex:1" onclick="stopMusic()">⏹ Стоп</button>
       <button class="btn btn-secondary btn-sm" onclick="nextTrack()">⏭</button>
     </div>
   </div>
@@ -586,7 +601,7 @@ let G={
   players:[],log:[],nightActions:{},nightResults:null,
   settings:{
     beautySelf:false,beautyRepeat:true,doctorMode:1,ripperMode:1,
-    detDiesAny:false,showRoles:true,nightMusicAuto:false,
+    detDiesAny:false,showRoles:true,nightMusicAuto:false,musicMode:'auto',
     filterManual:false,musicVolume:20,alarmRepeats:3,musicTrack:0
   },
   customRoles:[],
@@ -691,7 +706,10 @@ function toggleSetting(key,el){
   if(key==='filterManual'&&assignMode==='manual')renderManualPlayers();
 }
 function applyToggleUI(){
-  const m={beautySelf:'tog-beauty-self',beautyRepeat:'tog-beauty-repeat',detDiesAny:'tog-det-any',showRoles:'tog-show-roles',nightMusicAuto:'tog-night-music',filterManual:'tog-filter-manual'};
+  const m={beautySelf:'tog-beauty-self',beautyRepeat:'tog-beauty-repeat',detDiesAny:'tog-det-any',showRoles:'tog-show-roles',filterManual:'tog-filter-manual'};
+  // Music mode buttons
+  const mmAuto=document.getElementById('mmode-auto'),mmMan=document.getElementById('mmode-manual');
+  if(mmAuto&&mmMan){const isAuto=G.settings.musicMode==='auto';mmAuto.className=isAuto?'btn btn-primary btn-sm':'btn btn-secondary btn-sm';mmMan.className=!isAuto?'btn btn-primary btn-sm':'btn btn-secondary btn-sm';}
   for(const[k,id]of Object.entries(m)){const el=document.getElementById(id);if(el)el.classList.toggle('on',!!G.settings[k]);}
 }
 function setDoctorMode(m){G.settings.doctorMode=m;applyDoctorModeUI();}
@@ -806,7 +824,10 @@ function confirmStartGame(){
 }
 
 function doStartGame(){
-  addLog('info',`🎮 Игра началась. ${G.players.length} игроков.`);
+  // Sync activeRoles from actual player roles (critical for manual assignment)
+  const allRoleKeys=['detective','sheriff','doctor','beauty','maniac','priest','judge','ripper','don','yakuza'];
+  allRoleKeys.forEach(k=>{G.activeRoles[k]=G.players.some(p=>p.role===k);});
+  addLog('info',`🎮 Игра началась. ${G.players.length} игроков. Раздача: ${assignMode==='auto'?'автоматически 🎲':'вручную ✏️'}`);
   updateStats();renderPlayerList();
   showScreen('screen-game');
   saveState();
@@ -909,7 +930,7 @@ function goNight(){
   addLog('night',`🌙 === НОЧЬ ${G.nightNum} ===`);
   renderNightSteps();updateStats();renderPlayerList();
   switchGameTab('night');saveState();
-  if(G.settings.nightMusicAuto&&!musicPlaying)toggleMusic();
+  if(G.settings.nightMusicAuto){if(!musicPlaying&&!musicPaused)toggleMusic();else if(musicPaused)toggleMusic();}
 }
 
 function buildNightSteps(){
@@ -918,7 +939,6 @@ function buildNightSteps(){
   const steps=[];
   for(const roleKey of NIGHT_ORDER){
     if(roleKey==='don'){
-      if(!G.activeRoles.don)continue;
       const pl=G.players.filter(p=>p.role==='don');if(!pl.length)continue;
       steps.push({key:'don-check',label:'Дон — поиск Шерифа',icon:'🎩',roleKey:'don',isDead:pl.every(p=>!p.alive),
         inputs:[{id:'don-check-target',label:'Проверяет №',ph:'Номер'}],desc:'Просыпается отдельно.'});
@@ -930,7 +950,7 @@ function buildNightSteps(){
         inputs:[{id:'mafia-target',label:'Стреляет в №',ph:'0 = несострел'}],desc:`Живые: ${aliveNums}`});
       continue;
     }
-    if(!G.activeRoles[roleKey])continue;
+    // Use actual player roles (important for manual assignment mode)
     const pl=G.players.filter(p=>p.role===roleKey);if(!pl.length)continue;
     const rd=ROLES_DEF[roleKey];let inputs=[];
     if(roleKey==='yakuza')inputs=[{id:'yakuza-target',label:'Стреляет в №',ph:'0 = несострел'}];
@@ -1067,14 +1087,14 @@ function finishNight(){
     {id:'mafia-target',cond:false,label:'Мафия'},
     {id:'beauty-target',cond:G.activeRoles.beauty&&alive.some(p=>p.role==='beauty'),label:'Красотка'},
     {id:'yakuza-target',cond:false,label:'Якудза'},
-    {id:'sher-target',cond:G.activeRoles.sheriff&&alive.some(p=>p.role==='sheriff'),label:'Шериф'},
-    {id:'doc-target',cond:G.activeRoles.doctor&&alive.some(p=>p.role==='doctor'),label:'Доктор'},
-    {id:'det-target',cond:G.activeRoles.detective&&alive.some(p=>p.role==='detective'),label:'Детектив'},
-    {id:'judge-target',cond:G.activeRoles.judge&&alive.some(p=>p.role==='judge'),label:'Судья'},
-    {id:'priest-target',cond:G.activeRoles.priest&&alive.some(p=>p.role==='priest'),label:'Священник'},
-    {id:'ripper-target',cond:G.activeRoles.ripper&&alive.some(p=>p.role==='ripper'),label:'Потрошитель'},
-    {id:'maniac-target',cond:G.activeRoles.maniac&&alive.some(p=>p.role==='maniac'),label:'Маньяк'},
-    {id:'don-check-target',cond:G.activeRoles.don&&alive.some(p=>p.role==='don'),label:'Дон'},
+    {id:'sher-target',cond:alive.some(p=>p.role==='sheriff'),label:'Шериф'},
+    {id:'doc-target',cond:alive.some(p=>p.role==='doctor'),label:'Доктор'},
+    {id:'det-target',cond:alive.some(p=>p.role==='detective'),label:'Детектив'},
+    {id:'judge-target',cond:alive.some(p=>p.role==='judge'),label:'Судья'},
+    {id:'priest-target',cond:alive.some(p=>p.role==='priest'),label:'Священник'},
+    {id:'ripper-target',cond:alive.some(p=>p.role==='ripper'),label:'Потрошитель'},
+    {id:'maniac-target',cond:alive.some(p=>p.role==='maniac'),label:'Маньяк'},
+    {id:'don-check-target',cond:alive.some(p=>p.role==='don'),label:'Дон'},
   ];
   checks.forEach(c=>{
     const v=A[c.id];
@@ -1180,7 +1200,7 @@ function finishNight(){
   if(yakuzaTarget>0&&G.activeRoles.yakuza){addLog('night',`⚔️ Якудза → #${yakuzaTarget}`);processShot(yakuzaTarget,'⚔️ Якудза');}
   else if(G.activeRoles.yakuza&&alive.some(p=>p.role==='yakuza')){addLog('night','💨 Якудза — несострел');announceResults.push({icon:'💨',text:'Якудза — несострел.'});}
 
-  if(maniacTarget>0&&G.activeRoles.maniac){
+  if(maniacTarget>0&&alive.some(p=>p.role==='maniac')){
     const ma=alive.find(p=>p.role==='maniac');
     if(ma){
       addLog('night',`🔪 Маньяк → #${maniacTarget}`);
@@ -1190,7 +1210,7 @@ function finishNight(){
   }
 
   // Ripper
-  if(ripperTarget>0&&G.activeRoles.ripper){
+  if(ripperTarget>0&&alive.some(p=>p.role==='ripper')){
     const rp=alive.find(p=>p.role==='ripper');
     if(rp){
       addLog('night',`🗡️ Потрошитель → #${ripperTarget}`);
@@ -1222,7 +1242,7 @@ function finishNight(){
   }
 
   // Detective
-  if(detTarget>0&&G.activeRoles.detective){
+  if(detTarget>0&&alive.some(p=>p.role==='detective')){
     const da=alive.find(p=>p.role==='detective');
     if(da){
       if(detAction===1){
@@ -1251,7 +1271,7 @@ function finishNight(){
   }
 
   // Sheriff
-  if(sherTarget>0&&G.activeRoles.sheriff){
+  if(sherTarget>0&&alive.some(p=>p.role==='sheriff')){
     const sa=alive.find(p=>p.role==='sheriff');
     if(sa){
       addLog('night',`🔰 Шериф → #${sherTarget}`);
@@ -1269,7 +1289,7 @@ function finishNight(){
   }
 
   // Don check
-  if(donCheck>0&&G.activeRoles.don){
+  if(donCheck>0&&alive.some(p=>p.role==='don')){
     const da=alive.find(p=>p.role==='don');
     if(da){
       addLog('night',`🎩 Дон → #${donCheck}`);
@@ -1279,7 +1299,7 @@ function finishNight(){
   }
 
   // Priest
-  if(priestTarget>0&&G.activeRoles.priest){
+  if(priestTarget>0&&alive.some(p=>p.role==='priest')){
     const pa=alive.find(p=>p.role==='priest');
     if(pa){
       addLog('night',`✝️ Священник → #${priestTarget}`);
@@ -1314,7 +1334,7 @@ function finishNight(){
   ];
   rmap.forEach(r=>{
     const ak=r.key||r.k;
-    const on=ak==='don'?G.activeRoles.don:ak==='mafia'?true:G.activeRoles[ak];
+    const on=true;// use actual players
     const has=ak==='don'?G.players.some(p=>p.role==='don'):ak==='mafia'?G.players.some(p=>p.role==='mafia'||p.role==='don'):G.players.some(p=>p.role===ak);
     if(on&&has)roleSummary.push(r);
   });
@@ -1350,7 +1370,7 @@ function goDay(){
   buildDaySummary();buildVoteGrid();
   switchGameTab('day');updateStats();renderPlayerList();saveState();
   // Stop night music when day starts
-  if(G.settings.nightMusicAuto&&musicPlaying)toggleMusic();
+  if(G.settings.nightMusicAuto&&(musicPlaying||musicPaused))stopMusic();
 }
 
 function buildDaySummary(){
@@ -1359,13 +1379,18 @@ function buildDaySummary(){
   let h=`<div class="card"><div class="card-title">📢 Объявить игрокам — итоги ночи ${G.nightResults.nightNum}</div>`;
   if(G.nightResults.announceResults.length)G.nightResults.announceResults.forEach(r=>h+=`<div class="nri"><div class="nri-icon">${r.icon}</div><div class="nri-text">${r.text}</div></div>`);
   else h+=`<div class="text-muted">Тихая ночь.</div>`;
+  // Show judge immunity info
+  const immunePlayers=G.players.filter(p=>p.alive&&p.immune);
+  if(immunePlayers.length){
+    h+=`<div class="alert-box alert-warn" style="margin-top:8px;">⚖️ Иммунитет Судьи: ${immunePlayers.map(p=>`<strong>#${p.num} ${p.name}</strong>`).join(', ')} — нельзя выголосовать сегодня.</div>`;
+  }
   h+=`</div>`;el.innerHTML=h;
 }
 
 function buildVoteGrid(){
   const alive=G.players.filter(p=>p.alive);
   const gg=document.getElementById('vote-grid');
-  if(gg)gg.innerHTML=alive.map(p=>`<div class="vote-cell${p.nominated?' nominated':''}" id="vcell-${p.num}" onclick="toggleNom(${p.num})"><div>#${p.num}</div><div style="font-size:9px;overflow:hidden;white-space:nowrap;max-width:100%;text-overflow:ellipsis;">${p.name.length>6?p.name.slice(0,5)+'…':p.name}</div></div>`).join('');
+  if(gg)gg.innerHTML=alive.map(p=>`<div class="vote-cell${p.nominated?' nominated':''}${p.immune?' immune-cell':''}" id="vcell-${p.num}" onclick="toggleNom(${p.num})" title="${p.immune?'Иммунитет Судьи!':''}"><div>#${p.num}${p.immune?' ⚖️':''}</div><div style="font-size:9px;overflow:hidden;white-space:nowrap;max-width:100%;text-overflow:ellipsis;">${p.name.length>6?p.name.slice(0,5)+'…':p.name}</div></div>`).join('');
   buildVoteOutGrid();
   updateNomList();
 }
@@ -1411,7 +1436,7 @@ function voteNominated(){
   const toVote=(G.voteOutOrder||[]).map(n=>getPlayer(n)).filter(p=>p&&p.voteOut&&p.alive);
   if(!toVote.length){showWarn('Не выбраны игроки для выголосования (отметьте в нижней сетке).');return;}
   toVote.forEach(p=>{
-    if(p.immune){showWarn(`⚖️ #${p.num} ${p.name} имеет иммунитет! Остаётся в игре.`);p.voteOut=false;p.nominated=false;return;}
+    if(p.immune){showToast(`⚖️ #${p.num} ${p.name} — иммунитет Судьи! Нельзя выголосовать.`);p.voteOut=false;p.nominated=false;addLog('day',`⚖️ #${p.num} ${p.name} защищён Судьёй — выголосование отменено`);return;}
     p.alive=false;p.voted=true;p.nominated=false;p.voteOut=false;
     addLog('day',`🗳 #${p.num} ${p.name} (${getRoleDef(p.role).name}) выголосован`);
   });
@@ -1470,20 +1495,25 @@ function exportReport(){
 }
 
 // ===== JOIN =====
+function toggleJoinPw(){const inp=document.getElementById('join-password');inp.type=inp.type==='password'?'text':'password';}
 function joinGame(){
   const pw=document.getElementById('join-password').value.trim();
   const num=parseInt(document.getElementById('join-num').value)||0;
   const name=document.getElementById('join-name').value.trim();
   if(!name||!num){showWarn('Введите номер и имя.');return;}
   if(G.password&&pw!==G.password){showWarn('Неверный пароль!');return;}
-  if(!G.players.length){showWarn('Игра не началась. Ведущий должен начать игру.');return;}
-  const p=G.players.find(p=>p.num===num);if(!p){showWarn(`Игрок #${num} не найден.`);return;}
+  if(!G.players.length){showWarn('Ведущий ещё не раздал роли. Подождите.');return;}
+  const p=G.players.find(p=>p.num===num);if(!p){showWarn(`Игрок #${num} не найден. Проверьте номер.`);return;}
   p.name=name;savePlayerNames();
+  renderPlayerList();updateStats();
   const rd=getRoleDef(p.role);
   document.getElementById('rr-icon').textContent=rd.icon;
   document.getElementById('rr-name').textContent=rd.name;
   document.getElementById('rr-team').textContent={mafia:'⚫ Команда: Мафия',yakuza:'🟣 Команда: Якудза',neutral:'🟡 Нейтральный',town:'🔴 Команда: Мирный город'}[rd.team]||'';
   document.getElementById('rr-desc').textContent=rd.desc||'';
+  // Show player number and name
+  const rrPlayer=document.getElementById('rr-player-info');
+  if(rrPlayer)rrPlayer.textContent=`Игрок #${p.num} — ${p.name}`;
   showScreen('screen-role-reveal');
 }
 
@@ -1498,21 +1528,39 @@ function resetTimer(){clearInterval(timerInterval);timerRunning=false;document.g
 let musicPlaying=false,musicGain=null,audioCtx=null,musicTrack=0,customAudio=null;
 function getAudioCtx(){if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)();return audioCtx;}
 
+let musicPaused=false;
 function toggleMusic(){
   const hbtn=document.getElementById('hdr-music-btn'),mbtn=document.getElementById('music-btn');
   if(musicPlaying){
+    // Pause
     if(customAudio){try{customAudio.pause();}catch(e){}}
-    else{try{musicGain?.disconnect();}catch(e){}}
-    musicPlaying=false;
-    if(mbtn)mbtn.textContent='▶ Включить';
-    if(hbtn){hbtn.textContent='♪';hbtn.style.color='';}
+    else{try{if(musicGain)musicGain.gain.value=0;}catch(e){}}
+    musicPlaying=false;musicPaused=true;
+    if(mbtn)mbtn.textContent='▶ Продолжить';
+    if(hbtn){hbtn.textContent='⏸';hbtn.style.color='var(--text2)';}
+  } else if(musicPaused){
+    // Resume from pause
+    if(customAudio){try{customAudio.play().catch(()=>{});}catch(e){}}
+    else{try{if(musicGain)musicGain.gain.value=(G.settings.musicVolume||20)/500;}catch(e){}}
+    musicPlaying=true;musicPaused=false;
+    if(mbtn)mbtn.textContent='⏸ Пауза';
+    if(hbtn){hbtn.textContent='🎵';hbtn.style.color='var(--accent)';}
   } else {
+    // Start fresh
     if(customAudio&&musicTrack===99){try{customAudio.play().catch(()=>{});}catch(e){}}
     else{try{playAmbient();}catch(e){}}
-    musicPlaying=true;
-    if(mbtn)mbtn.textContent='⏹ Выключить';
+    musicPlaying=true;musicPaused=false;
+    if(mbtn)mbtn.textContent='⏸ Пауза';
     if(hbtn){hbtn.textContent='🎵';hbtn.style.color='var(--accent)';}
   }
+}
+function stopMusic(){
+  if(customAudio){try{customAudio.pause();customAudio.currentTime=0;}catch(e){}}
+  else{try{if(musicGain){musicGain.disconnect();musicGain=null;}}catch(e){}}
+  musicPlaying=false;musicPaused=false;
+  const hbtn=document.getElementById('hdr-music-btn'),mbtn=document.getElementById('music-btn');
+  if(mbtn)mbtn.textContent='▶ Включить';
+  if(hbtn){hbtn.textContent='♪';hbtn.style.color='';}
 }
 
 function setMusicVolume(v){
@@ -1532,13 +1580,25 @@ function nextTrack(){
   selectTrack(musicTrack);
 }
 
+let _oscillators=[];
 function playAmbient(){
   const ctx=getAudioCtx();
+  if(musicGain){try{_oscillators.forEach(o=>{try{o.stop();}catch(e){}});musicGain.disconnect();}catch(e){}}
+  _oscillators=[];
   const freqs=[[55,110,165],[73,110,147],[65,98,130]][musicTrack%3];
   musicGain=ctx.createGain();musicGain.gain.value=(G.settings.musicVolume||20)/500;musicGain.connect(ctx.destination);
-  freqs.forEach(f=>{const o=ctx.createOscillator();o.type='sine';o.frequency.value=f;o.connect(musicGain);o.start();});
+  freqs.forEach(f=>{const o=ctx.createOscillator();o.type='sine';o.frequency.value=f;o.connect(musicGain);o.start();_oscillators.push(o);});
 }
 
+function setMusicMode(mode){
+  G.settings.musicMode=mode;
+  G.settings.nightMusicAuto=(mode==='auto');
+  const mmAuto=document.getElementById('mmode-auto'),mmMan=document.getElementById('mmode-manual');
+  if(mmAuto)mmAuto.className=mode==='auto'?'btn btn-primary btn-sm':'btn btn-secondary btn-sm';
+  if(mmMan)mmMan.className=mode==='manual'?'btn btn-primary btn-sm':'btn btn-secondary btn-sm';
+  const desc=document.getElementById('mmode-desc');
+  if(desc)desc.textContent=mode==='auto'?'Авто: вкл при ночи, выкл при дне. Кнопка ♪ — пауза/продолжить.':'Вручную: кнопка ♪ вкл/выкл музыку.';
+}
 function pickMusicFile(){document.getElementById('music-file-input').click();}
 function loadMusicFile(input){
   const file=input.files[0];if(!file)return;

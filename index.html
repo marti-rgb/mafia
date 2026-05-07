@@ -174,6 +174,9 @@ html,body{height:100%;width:100%;overflow:hidden;background:var(--bg);color:var(
 .win-title{font-family:'Playfair Display',serif;font-size:34px;color:var(--accent2);margin-bottom:6px;}
 .win-sub{color:var(--text2);font-size:13px;margin-bottom:20px;}
 </style>
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
 </head>
 <body>
 <div id="toast"></div>
@@ -206,7 +209,7 @@ html,body{height:100%;width:100%;overflow:hidden;background:var(--bg);color:var(
       </div>
       <div class="form-group"><label class="inp-label">Ваш номер за столом</label><input class="inp" id="join-num" type="number" placeholder="Например: 3" min="1"></div>
       <div class="form-group"><label class="inp-label">Ваше игровое имя</label><input class="inp" id="join-name" type="text" placeholder="Введите имя"></div>
-      <button class="btn btn-primary btn-full mt8" onclick="joinGame()">Получить роль →</button>
+      <button class="btn btn-primary btn-full mt8" onclick="joinGameFirebase()">Получить роль →</button>
     </div>
   </div>
 </div>
@@ -869,6 +872,7 @@ function doStartGame(){
   updateStats();renderPlayerList();
   showScreen('screen-game');
   saveState();
+  fbPublishGame();
   goNight();
 }
 
@@ -1766,6 +1770,86 @@ function resumeGame(banner){
   if(G.phase==='night'){G._nightSteps=buildNightSteps();renderNightSteps();switchGameTab('night');}
   else{buildDaySummary();buildVoteGrid();switchGameTab('day');}
 }
+
+// ===== FIREBASE =====
+const firebaseConfig = {
+  apiKey: "AIzaSyASuqTD17ntBrUROsLty_bE_Tn9H8_VAA",
+  authDomain: "mafia-f2d74.firebaseapp.com",
+  databaseURL: "https://mafia-f2d74-default-rtdb.firebaseio.com",
+  projectId: "mafia-f2d74",
+  storageBucket: "mafia-f2d74.firebasestorage.app",
+  messagingSenderId: "877009771245",
+  appId: "1:877009771245:web:3df0cbff8a8a8d77fbcae4"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+let fbGameRef = null;
+let fbPlayersListener = null;
+
+// Ведущий: записать игру в Firebase
+function fbPublishGame(){
+  if(!G.playerModeActive) return;
+  const gameId = G.password;
+  if(!gameId){showWarn('Введите пароль игры для режима «Вход игрока».');return false;}
+  fbGameRef = db.ref('games/' + gameId);
+  const playersData = {};
+  G.players.forEach(p => {
+    playersData[p.num] = {num:p.num, role:p.role, name:p.name, joined:false};
+  });
+  fbGameRef.set({players: playersData, active: true, createdAt: Date.now()});
+  // Listen for player name updates
+  fbStartListening(gameId);
+  return true;
+}
+
+// Ведущий: слушать обновления имён от игроков
+function fbStartListening(gameId){
+  if(fbPlayersListener) fbPlayersListener.off();
+  fbPlayersListener = db.ref('games/' + gameId + '/players');
+  fbPlayersListener.on('child_changed', snap => {
+    const data = snap.val();
+    const p = G.players.find(p => p.num === data.num);
+    if(p && data.name && data.name !== p.name){
+      p.name = data.name;
+      renderPlayerList(); updateStats(); saveState();
+      showToast('👤 #' + data.num + ' ' + data.name + ' вошёл в игру');
+    }
+  });
+}
+
+// Игрок: войти в игру через Firebase
+async function joinGameFirebase(){
+  const pw   = document.getElementById('join-password').value.trim();
+  const num  = parseInt(document.getElementById('join-num').value) || 0;
+  const name = document.getElementById('join-name').value.trim();
+  if(!pw)  { showWarn('Введите пароль игры.'); return; }
+  if(!num) { showWarn('Введите ваш номер.'); return; }
+  if(!name){ showWarn('Введите ваше имя.'); return; }
+
+  const ref = db.ref('games/' + pw + '/players/' + num);
+  let snap;
+  try { snap = await ref.once('value'); } catch(e){ showWarn('Ошибка соединения.'); return; }
+
+  if(!snap.exists()){ showWarn('Игра не найдена или неверный пароль.'); return; }
+  const data = snap.val();
+  if(data.joined){ showWarn('Этот номер уже занят. Вы уже входили?'); return; }
+
+  // Mark joined + save name
+  await ref.update({joined: true, name: name});
+
+  // Show role locally
+  const roleKey = data.role;
+  // We need ROLES_DEF — it's in the same file
+  const rd = getRoleDef(roleKey);
+  document.getElementById('rr-icon').textContent  = rd.icon;
+  document.getElementById('rr-name').textContent  = rd.name;
+  document.getElementById('rr-team').textContent  = {mafia:'⚫ Команда: Мафия',yakuza:'🟣 Команда: Якудза',neutral:'🟡 Нейтральный',town:'🔴 Команда: Мирный город'}[rd.team]||'';
+  document.getElementById('rr-desc').textContent  = rd.desc||'';
+  const rrPlayer = document.getElementById('rr-player-info');
+  if(rrPlayer) rrPlayer.textContent = 'Игрок #' + num + ' — ' + name;
+  showScreen('screen-role-reveal');
+}
+
 </script>
 </body>
 </html>

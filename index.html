@@ -373,7 +373,7 @@ html,body{height:100%;width:100%;overflow:hidden;background:var(--bg);color:var(
     <div class="tab" onclick="gameTab('day',this)">День</div>
     <div class="tab" onclick="gameTab('log',this)">Журнал</div>
   </div>
-  <div id="gtab-players" class="scroll-area"><div id="player-list"></div></div>
+  <div id="gtab-players" class="scroll-area"><div style="padding-bottom:4px;display:flex;justify-content:flex-end;"><button class="btn btn-secondary btn-sm" id="add-player-btn" onclick="openAddPlayer()" style="font-size:11px;">➕ Добавить игрока</button></div><div id="player-list"></div></div>
   <div id="gtab-night" class="scroll-area" style="display:none">
     <div class="text-center mb8"><span class="night-num-badge" id="night-badge">🌙 Ночь 1</span></div>
     <div id="night-steps"></div>
@@ -422,11 +422,11 @@ html,body{height:100%;width:100%;overflow:hidden;background:var(--bg);color:var(
     </div>
     <div class="card">
       <div class="card-title">Управление фазами</div>
-      <div class="row mb8">
+      <button class="btn btn-secondary btn-full mb8" onclick="returnToNightEdit()">↩ Вернуться к правке ночи</button>
+      <div class="row">
         <button class="btn btn-secondary" style="flex:1" onclick="goNight()">🌙 Следующая ночь</button>
         <button class="btn btn-secondary" style="flex:1" onclick="checkWin()">🏆 Победа?</button>
       </div>
-      <button class="btn btn-secondary btn-full" onclick="returnToNightEdit()">↩ Вернуться к правке ночи</button>
     </div>
   </div>
   <div id="gtab-log" class="scroll-area" style="display:none">
@@ -493,6 +493,13 @@ html,body{height:100%;width:100%;overflow:hidden;background:var(--bg);color:var(
       <div class="setting-row"><div><div class="setting-label">Показывать роли в списке</div></div><div class="toggle-switch on" id="tog-show-roles" onclick="toggleSetting('showRoles',this)"></div></div>
     </div>
     <div class="card"><div class="card-title">Сброс</div><button class="btn btn-danger btn-full" onclick="if(confirm('Сбросить?'))localStorage.clear(),location.reload()">Сбросить все данные</button></div>
+    <div class="card"><div class="card-title">📤 Экспорт / Импорт настроек</div>
+      <div style="font-size:12px;color:var(--text2);margin-bottom:8px;">Сохраните настройки и роли для переноса на другое устройство.</div>
+      <button class="btn btn-secondary btn-full mb8" onclick="exportSettings()">📤 Экспортировать настройки</button>
+      <label class="inp-label">Импортировать из файла</label>
+      <input type="file" id="import-settings-file" accept=".json" style="display:none" onchange="importSettingsFile(this)">
+      <button class="btn btn-secondary btn-full" onclick="document.getElementById('import-settings-file').click()">📥 Загрузить настройки (.json)</button>
+    </div>
   </div>
 </div>
 
@@ -518,7 +525,14 @@ html,body{height:100%;width:100%;overflow:hidden;background:var(--bg);color:var(
 </div>
 
 <!-- MODALS -->
-<div class="modal-overlay" id="modal-notes">
+<div class="modal-overlay" id="modal-add-player">
+  <div class="modal"><button class="modal-close" onclick="closeModal('modal-add-player')">✕</button>
+    <div class="modal-title">➕ Добавить игрока</div>
+    <div class="form-group"><label class="inp-label">Имя</label><input class="inp" id="ap-name" placeholder="Имя игрока"></div>
+    <div class="form-group"><label class="inp-label">Роль</label><select class="inp" id="ap-role"></select></div>
+    <button class="btn btn-primary btn-full mt8" onclick="doAddPlayer()">Добавить</button>
+  </div>
+</div>
   <div class="modal"><button class="modal-close" onclick="closeModal('modal-notes')">✕</button>
     <div class="modal-title">📝 Заметки</div>
     <textarea class="notes-inp" id="notes-text" placeholder="Подозрения, версии..."></textarea>
@@ -881,13 +895,17 @@ function killPlayer(num){
   const p=getPlayer(num);if(!p||!p.alive)return;
   p.alive=false;p.silent=false;p.immune=false;p.nominated=false;p.voteOut=false;
   addLog('death',`💀 #${p.num} ${p.name} (${getRoleDef(p.role).name}) убит`);
-  updateStats();renderPlayerList();saveState();
+  updateStats();renderPlayerList();refreshPhaseUI();saveState();
 }
 function revivePlayer(num){
   const p=getPlayer(num);if(!p||p.alive)return;
   p.alive=true;p.voted=false;
   addLog('info',`✚ #${p.num} ${p.name} воскрешён`);
-  updateStats();renderPlayerList();saveState();
+  updateStats();renderPlayerList();refreshPhaseUI();saveState();
+}
+function refreshPhaseUI(){
+  if(G.phase==='night'){renderNightSteps();}
+  else if(G.phase==='day'){buildDaySummary();buildVoteGrid();}
 }
 function openRename(num){const p=getPlayer(num);document.getElementById('rename-num').value=num;document.getElementById('rename-name').value=p?p.name:'';openModal('modal-rename');}
 function savePlayerName(){
@@ -898,7 +916,7 @@ function savePlayerName(){
     addLog('info',`✏️ #${num} переименован в «${name}»`);
     savePlayerNames();
   }
-  closeModal('modal-rename');renderPlayerList();saveState();
+  closeModal('modal-rename');renderPlayerList();refreshPhaseUI();saveState();
 }
 function savePlayerNames(){try{const n={};G.players.forEach(p=>n[p.num]=p.name);localStorage.setItem('mafia_names',JSON.stringify(n));}catch(e){}}
 
@@ -1396,7 +1414,7 @@ function buildVoteGrid(){
 }
 
 function buildVoteOutGrid(){
-  const nominated=G.players.filter(p=>p.nominated&&p.alive);
+  const nominated=(G.nominationOrder||[]).map(n=>getPlayer(n)).filter(p=>p&&p.nominated&&p.alive);
   const og=document.getElementById('vote-out-grid');
   if(og)og.innerHTML=nominated.map(p=>`<div class="vote-cell${p.voteOut?' voted-out':''}" id="vocell-${p.num}" onclick="toggleVoteOut(${p.num})"><div>#${p.num}</div><div style="font-size:9px;overflow:hidden;white-space:nowrap;max-width:100%;text-overflow:ellipsis;">${p.name.length>6?p.name.slice(0,5)+'…':p.name}</div></div>`).join('');
   updateVoteOutList();
@@ -1652,6 +1670,57 @@ function saveToHistory(){try{const h=JSON.parse(localStorage.getItem(HISTORY_KEY
 function showHistory(){const h=JSON.parse(localStorage.getItem(HISTORY_KEY)||'[]');document.getElementById('history-content').innerHTML=!h.length?'<div class="text-muted text-center" style="padding:32px;">Истории нет</div>':h.map((g,i)=>`<div class="card" style="cursor:pointer" onclick="showHistDetail(${i})"><div style="display:flex;justify-content:space-between;"><div><div style="font-size:14px;font-weight:600;">${g.date}</div><div class="text-muted">${g.players} игроков · ${g.nights} ночей</div></div><div style="font-size:12px;color:var(--text2);">✅ ${g.pd.filter(p=>p.alive).length} выжили</div></div></div>`).join('')+`<button class="btn btn-danger btn-full mt8" onclick="if(confirm('Удалить историю?')){localStorage.removeItem('${HISTORY_KEY}');showHistory();}">🗑 Очистить</button>`;showScreen('screen-history');}
 function showHistDetail(i){const h=JSON.parse(localStorage.getItem(HISTORY_KEY)||'[]');const g=h[i];if(!g)return;let html=`<div class="card"><div class="card-title">Состав</div>`;g.pd.forEach(p=>{const rd=getRoleDef(p.role);html+=`<div style="display:flex;gap:8px;align-items:center;padding:5px 0;border-bottom:1px solid var(--border);"><span>${rd.icon}</span><div style="flex:1;font-size:13px;"><strong>#${p.num} ${p.name}</strong> — ${rd.name}</div><span style="font-size:11px;color:var(--text2);">${p.alive?'жив':p.voted?'выгол.':'убит'}</span></div>`;});html+=`</div><div class="card"><div class="card-title">Журнал</div>`;g.log.forEach(e=>html+=`<div class="log-entry ${e.type}"><div class="log-time">${e.time}</div>${e.msg}</div>`);html+=`</div>`;document.getElementById('history-detail').innerHTML=html;showScreen('screen-history-detail');}
 function checkHistoryBtn(){const h=JSON.parse(localStorage.getItem(HISTORY_KEY)||'[]');const btn=document.getElementById('menu-history-btn');if(btn)btn.style.display=h.length?'':'none';}
+
+// ===== EXPORT/IMPORT SETTINGS =====
+function exportSettings(){
+  const data={
+    version:2,
+    settings:G.settings,
+    activeRoles:G.activeRoles,
+    customRoles:G.customRoles,
+    notes:G.notes||''
+  };
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}));
+  a.download='mafia_settings.json';a.click();
+  showToast('Настройки экспортированы');
+}
+function importSettingsFile(input){
+  const file=input.files[0];if(!file)return;
+  const r=new FileReader();
+  r.onload=e=>{
+    try{
+      const data=JSON.parse(e.target.result);
+      if(data.settings)Object.assign(G.settings,data.settings);
+      if(data.activeRoles)Object.assign(G.activeRoles,data.activeRoles);
+      if(data.customRoles)G.customRoles=data.customRoles;
+      if(data.notes)G.notes=data.notes;
+      saveState();applyToggleUI();
+      showToast('✅ Настройки загружены');
+    }catch(err){showWarn('Ошибка чтения файла. Убедитесь, что это mafia_settings.json');}
+  };
+  r.readAsText(file);
+  input.value='';
+}
+
+// ===== ADD PLAYER DURING GAME =====
+function openAddPlayer(){
+  const allKeys=Object.keys(ROLES_DEF).concat(G.customRoles.map(r=>r.key));
+  document.getElementById('ap-role').innerHTML=allKeys.map(k=>{const rd=getRoleDef(k);return`<option value="${k}">${rd.name}</option>`;}).join('');
+  document.getElementById('ap-name').value='';
+  openModal('modal-add-player');
+}
+function doAddPlayer(){
+  const name=document.getElementById('ap-name').value.trim()||'Новый игрок';
+  const role=document.getElementById('ap-role').value||'civilian';
+  const maxNum=G.players.reduce((m,p)=>Math.max(m,p.num),0);
+  const num=maxNum+1;
+  G.players.push({num,name,role,alive:true,voted:false,silent:false,immune:false,nominated:false,voteOut:false,actions:[]});
+  addLog('info',`➕ Добавлен игрок #${num} ${name} (${getRoleDef(role).name})`);
+  updateStats();renderPlayerList();refreshPhaseUI();saveState();
+  closeModal('modal-add-player');
+  showToast(`Игрок #${num} ${name} добавлен`);
+}
 
 // ===== INIT =====
 updateSetupPreview();checkHistoryBtn();

@@ -1,0 +1,1747 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0a0a0f">
+<title>Мафия</title>
+<link rel="manifest" href="manifest.json">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0a0a0f;--bg2:#12121a;--bg3:#1a1a25;--border:#2a2a3a;
+  --accent:#c8973a;--accent2:#e8b84b;
+  --red:#c0392b;--red2:#e74c3c;--blue:#2980b9;--blue2:#3498db;
+  --green:#27ae60;--green2:#2ecc71;--purple:#8e44ad;
+  --text:#e8e4d8;--text2:#9a9580;--text3:#5a5548;
+  --radius:12px;--safe-bottom:env(safe-area-inset-bottom,0px);
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;width:100%;overflow:hidden;background:var(--bg);color:var(--text);font-family:'Jost',sans-serif;font-size:15px;}
+.screen{display:none;flex-direction:column;height:100vh;width:100%;position:absolute;top:0;left:0;}
+.screen.active{display:flex;}
+#screen-menu{background:radial-gradient(ellipse at 50% 30%,#1a1015,#0a0a0f 70%);justify-content:center;align-items:center;overflow-y:auto;}
+.menu-logo{text-align:center;margin-bottom:36px;padding-top:20px;}
+.menu-logo h1{font-family:'Playfair Display',serif;font-size:48px;font-weight:900;letter-spacing:6px;color:var(--accent);}
+.menu-logo p{color:var(--text2);font-size:12px;letter-spacing:3px;margin-top:4px;text-transform:uppercase;}
+.menu-btns{display:flex;flex-direction:column;gap:11px;width:82%;max-width:320px;padding-bottom:32px;}
+.btn-menu{padding:14px;border-radius:var(--radius);border:1px solid var(--border);background:var(--bg2);color:var(--text);font-family:'Jost',sans-serif;font-size:15px;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;flex-shrink:0;}
+.btn-menu:active{transform:scale(.97);}
+.btn-menu.primary{background:var(--accent);color:#0a0a0f;border-color:var(--accent);font-weight:700;}
+.hdr{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--bg2);border-bottom:1px solid var(--border);flex-shrink:0;min-height:52px;}
+.hdr-title{font-family:'Playfair Display',serif;font-size:18px;color:var(--accent);}
+.hdr-sub{font-size:11px;color:var(--text2);}
+.btn-icon{width:36px;height:36px;border-radius:8px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:16px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;}
+.btn-icon:active{background:var(--border);}
+.tabs{display:flex;background:var(--bg2);border-bottom:1px solid var(--border);flex-shrink:0;}
+.tab{flex:1;padding:9px 2px;text-align:center;font-size:10px;font-weight:500;color:var(--text2);cursor:pointer;border-bottom:2px solid transparent;}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent);}
+.scroll-area{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:12px;}
+.scroll-area::-webkit-scrollbar{display:none;}
+.bottom-bar{background:var(--bg2);border-top:1px solid var(--border);padding:10px 12px;padding-bottom:calc(10px + var(--safe-bottom));flex-shrink:0;display:flex;gap:10px;align-items:center;}
+.btn{padding:12px 16px;border-radius:var(--radius);border:none;font-family:'Jost',sans-serif;font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;flex-shrink:0;}
+.btn:active{transform:scale(.97);opacity:.9;}
+.btn-primary{background:var(--accent);color:#0a0a0f;}
+.btn-secondary{background:var(--bg3);color:var(--text);border:1px solid var(--border);}
+.btn-danger{background:var(--red);color:#fff;}
+.btn-success{background:var(--green);color:#fff;}
+.btn-full{width:100%;}
+.btn-sm{padding:8px 12px;font-size:12px;}
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:12px;margin-bottom:10px;}
+.card-title{font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;}
+.inp{background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--text);font-family:'Jost',sans-serif;font-size:15px;width:100%;outline:none;transition:border .2s;}
+.inp:focus{border-color:var(--accent);}
+.inp-label{font-size:12px;color:var(--text2);margin-bottom:4px;display:block;}
+/* STATS */
+.stats-row{display:flex;gap:5px;padding:8px 10px;flex-shrink:0;flex-wrap:wrap;}
+.stat-pill{flex:1;min-width:0;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:6px 3px;text-align:center;}
+.stat-pill .n{font-family:'Playfair Display',serif;font-size:18px;font-weight:700;}
+.stat-pill .l{font-size:8px;color:var(--text2);}
+.stat-pill.alive .n{color:var(--green2);}
+.stat-pill.dead .n{color:var(--red2);}
+.stat-pill.voted .n{color:var(--accent);}
+.stat-pill.maf .n{color:#ccc;}
+.stat-pill.town-a .n{color:var(--red2);}
+/* PLAYER LIST */
+.player-item{display:flex;align-items:center;gap:8px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:9px 10px;margin-bottom:7px;}
+.player-item.dead{opacity:.4;}
+.player-item.silent{border-color:var(--blue);}
+.player-item.on-vote{border-color:var(--red2);background:rgba(192,57,43,.08);}
+.player-num{width:28px;height:28px;border-radius:50%;background:var(--bg3);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0;}
+.player-info{flex:1;min-width:0;}
+.player-name{font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.player-role{font-size:11px;margin-top:1px;}
+.player-status{font-size:10px;color:var(--text2);margin-top:1px;}
+.player-actions{display:flex;gap:5px;flex-shrink:0;}
+.p-btn{width:28px;height:28px;border-radius:6px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:12px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;}
+.p-btn:active{background:var(--border);}
+.p-btn.kill{border-color:var(--red);color:var(--red2);}
+.p-btn.revive{border-color:var(--green);color:var(--green2);}
+/* ROLE BADGES */
+.role-badge{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;}
+.rb-mafia,.rb-don{background:rgba(180,180,180,.1);color:#ccc;border:1px solid rgba(180,180,180,.3);}
+.rb-yakuza{background:rgba(142,68,173,.2);color:#bb8fce;border:1px solid rgba(142,68,173,.4);}
+.rb-detective,.rb-sheriff,.rb-doctor,.rb-beauty,.rb-priest,.rb-judge,.rb-ripper,.rb-civilian{background:rgba(231,76,60,.1);color:#e74c3c;border:1px solid rgba(231,76,60,.3);}
+.rb-maniac{background:rgba(243,156,18,.12);color:#f39c12;border:1px solid rgba(243,156,18,.3);}
+.rb-custom{background:rgba(149,165,166,.1);color:#aab7b8;border:1px solid rgba(149,165,166,.3);}
+/* NIGHT */
+.night-step{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:12px;margin-bottom:8px;}
+.night-step.active-step{border-color:var(--accent);background:rgba(200,151,58,.05);}
+.night-step.dead-step{opacity:.5;border-style:dashed;}
+.night-step-hdr{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
+.step-num{width:26px;height:26px;border-radius:50%;background:var(--bg3);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0;}
+.active-step .step-num{background:var(--accent);color:#0a0a0f;border-color:var(--accent);}
+.step-role{font-size:14px;font-weight:600;}
+.step-desc{font-size:11px;color:var(--text2);margin-top:1px;}
+.check-result{padding:8px 10px;border-radius:8px;margin-top:4px;font-size:13px;display:none;}
+.check-result.show{display:block;}
+.check-black{background:rgba(180,180,180,.08);border:1px solid rgba(180,180,180,.25);color:#ccc;}
+.check-red{background:rgba(231,76,60,.1);border:1px solid rgba(231,76,60,.3);color:#e74c3c;}
+.check-warn{background:rgba(243,156,18,.1);border:1px solid rgba(243,156,18,.3);color:#f5cba7;}
+/* TIMER */
+.timer-display{font-family:'Playfair Display',serif;font-size:48px;font-weight:700;color:var(--accent);text-align:center;letter-spacing:2px;padding:10px 0;}
+.timer-display.warning{color:var(--red2);}
+.timer-row{display:flex;gap:8px;margin-bottom:8px;}
+.timer-preset{flex:1;padding:8px 4px;border-radius:8px;border:1px solid var(--border);background:var(--bg3);color:var(--text2);font-size:12px;cursor:pointer;text-align:center;}
+.timer-preset.active-preset{border-color:var(--accent);color:var(--accent);background:rgba(200,151,58,.1);}
+/* LOG */
+.log-entry{padding:7px 10px;border-left:2px solid var(--border);margin-bottom:5px;font-size:12px;line-height:1.5;}
+.log-entry.night{border-color:var(--purple);}
+.log-entry.day{border-color:var(--accent);}
+.log-entry.death{border-color:var(--red2);}
+.log-entry.info{border-color:var(--blue2);}
+.log-time{font-size:9px;color:var(--text3);margin-bottom:1px;}
+/* MODAL */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:100;display:none;align-items:flex-end;justify-content:center;}
+.modal-overlay.open{display:flex;}
+.modal{background:var(--bg2);border:1px solid var(--border);border-radius:20px 20px 0 0;padding:18px 14px;padding-bottom:calc(18px + var(--safe-bottom));width:100%;max-height:88vh;overflow-y:auto;position:relative;}
+.modal-title{font-family:'Playfair Display',serif;font-size:19px;color:var(--accent);margin-bottom:14px;text-align:center;}
+.modal-close{position:absolute;top:12px;right:14px;background:none;border:none;color:var(--text2);font-size:22px;cursor:pointer;}
+.nri{display:flex;align-items:flex-start;gap:8px;padding:9px;background:var(--bg3);border-radius:8px;margin-bottom:6px;}
+.nri-icon{font-size:18px;flex-shrink:0;margin-top:1px;}
+.nri-text{font-size:13px;line-height:1.5;}
+.nri-text strong{color:var(--accent);}
+.nri-section{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin:10px 0 5px;}
+/* TOGGLE */
+.role-toggle{display:flex;align-items:center;justify-content:space-between;padding:9px 10px;background:var(--bg3);border-radius:8px;margin-bottom:7px;}
+.toggle-switch{width:42px;height:22px;border-radius:11px;background:var(--border);position:relative;cursor:pointer;flex-shrink:0;transition:background .2s;}
+.toggle-switch.on{background:var(--accent);}
+.toggle-switch::after{content:'';width:16px;height:16px;border-radius:50%;background:#fff;position:absolute;top:3px;left:3px;transition:transform .2s;}
+.toggle-switch.on::after{transform:translateX(20px);}
+/* MISC */
+.setting-row{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--bg2);border-radius:8px;margin-bottom:6px;border:1px solid var(--border);}
+.setting-label{font-size:13px;}
+.setting-sub{font-size:11px;color:var(--text2);margin-top:1px;}
+.divider{border:none;border-top:1px solid var(--border);margin:10px 0;}
+.text-center{text-align:center;}
+.text-muted{color:var(--text2);font-size:12px;}
+.mt8{margin-top:8px;}
+.mb8{margin-bottom:8px;}
+.row{display:flex;gap:8px;}
+.night-num-badge{display:inline-block;background:rgba(142,68,173,.3);border:1px solid rgba(142,68,173,.5);color:#bb8fce;border-radius:20px;padding:2px 12px;font-size:12px;margin-bottom:12px;}
+.alert-box{padding:9px 12px;border-radius:8px;margin-bottom:8px;font-size:13px;line-height:1.5;}
+.alert-warn{background:rgba(243,156,18,.12);border:1px solid rgba(243,156,18,.35);color:#f5cba7;}
+.alert-info{background:rgba(52,152,219,.12);border:1px solid rgba(52,152,219,.35);color:#aed6f1;}
+.alert-danger{background:rgba(192,57,43,.12);border:1px solid rgba(192,57,43,.35);color:#f1948a;}
+.notes-inp{width:100%;min-height:110px;resize:vertical;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--text);font-family:'Jost',sans-serif;font-size:14px;outline:none;}
+.notes-inp:focus{border-color:var(--accent);}
+.sim-event{padding:7px 10px;border-radius:8px;margin-bottom:5px;background:var(--bg3);font-size:13px;line-height:1.5;}
+.vote-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-bottom:10px;}
+.vote-cell{padding:8px 4px;border-radius:8px;border:1px solid var(--border);background:var(--bg3);text-align:center;cursor:pointer;font-size:12px;font-weight:700;user-select:none;}
+.vote-cell:active{transform:scale(.95);}
+.vote-cell.nominated{border-color:var(--red2);background:rgba(192,57,43,.2);color:var(--red2);}
+.vote-cell.voted-out{border-color:#888;background:rgba(100,100,100,.2);color:#888;}
+.vote-cell.dead-cell{opacity:.25;pointer-events:none;}
+.vote-cell.immune-cell{border-color:#f39c12;background:rgba(243,156,18,.15);color:#f39c12;}
+#toast{position:fixed;top:60px;left:50%;transform:translateX(-50%);background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:8px 16px;font-size:13px;z-index:300;pointer-events:none;opacity:0;transition:opacity .3s;}
+/* JOIN */
+#screen-join{justify-content:center;padding:20px;}
+.join-card{background:var(--bg2);border:1px solid var(--border);border-radius:20px;padding:22px;}
+.join-title{font-family:'Playfair Display',serif;font-size:22px;color:var(--accent);text-align:center;margin-bottom:18px;}
+.form-group{margin-bottom:12px;}
+/* ROLE REVEAL */
+#screen-role-reveal{justify-content:center;align-items:center;background:radial-gradient(ellipse at center,#1a0f1a,#0a0a0f 70%);}
+.rr-card{text-align:center;padding:28px 20px;width:92%;}
+.rr-icon{font-size:68px;margin-bottom:12px;}
+.rr-name{font-family:'Playfair Display',serif;font-size:36px;font-weight:900;color:var(--accent);margin-bottom:6px;}
+.rr-team{font-size:14px;margin-bottom:8px;}
+.rr-desc{font-size:13px;color:var(--text2);line-height:1.6;margin-bottom:20px;}
+/* WIN */
+#screen-win{justify-content:center;align-items:center;background:radial-gradient(ellipse at center,#1a1505,#0a0a0f 70%);}
+.win-card{text-align:center;padding:28px 20px;width:92%;}
+.win-icon{font-size:60px;margin-bottom:14px;}
+.win-title{font-family:'Playfair Display',serif;font-size:34px;color:var(--accent2);margin-bottom:6px;}
+.win-sub{color:var(--text2);font-size:13px;margin-bottom:20px;}
+</style>
+</head>
+<body>
+<div id="toast"></div>
+
+<!-- MENU -->
+<div id="screen-menu" class="screen active">
+  <div class="menu-logo"><h1>МАФИЯ</h1><p>Режим ведущего</p></div>
+  <div class="menu-btns">
+    <button class="btn-menu primary" onclick="showSetup()">🎮 Новая игра</button>
+    <button class="btn-menu" onclick="showScreen('screen-join')">👤 Войти игроком</button>
+    <button class="btn-menu" onclick="showSimulation()">🤖 Симуляция</button>
+    <button class="btn-menu" onclick="showRules()">📖 Правила ролей</button>
+    <button class="btn-menu" onclick="showSettings()">⚙️ Настройки</button>
+    <button class="btn-menu" id="menu-history-btn" style="display:none" onclick="showHistory()">📋 История игр</button>
+  </div>
+</div>
+
+<!-- JOIN -->
+<div id="screen-join" class="screen">
+  <div class="hdr"><div class="hdr-title">Вход игрока</div><div class="btn-icon" onclick="showScreen('screen-menu')">✕</div></div>
+  <div class="scroll-area" style="display:flex;flex-direction:column;justify-content:center;">
+    <div class="join-card">
+      <div class="join-title">🃏 Получить роль</div>
+      <div class="form-group">
+        <label class="inp-label">Пароль игры</label>
+        <div style="display:flex;gap:6px;align-items:center;">
+          <input class="inp" id="join-password" type="password" placeholder="Введите пароль" style="flex:1;">
+          <div class="btn-icon" onclick="toggleJoinPw()" id="join-pw-eye" title="Показать пароль">👁</div>
+        </div>
+      </div>
+      <div class="form-group"><label class="inp-label">Ваш номер за столом</label><input class="inp" id="join-num" type="number" placeholder="Например: 3" min="1"></div>
+      <div class="form-group"><label class="inp-label">Ваше игровое имя</label><input class="inp" id="join-name" type="text" placeholder="Введите имя"></div>
+      <button class="btn btn-primary btn-full mt8" onclick="joinGame()">Получить роль →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ROLE REVEAL -->
+<div id="screen-role-reveal" class="screen">
+  <div class="rr-card">
+    <div id="rr-player-info" style="font-size:12px;color:var(--text2);margin-bottom:4px;"></div>
+    <div id="rr-icon" class="rr-icon">🃏</div>
+    <div id="rr-name" class="rr-name">—</div>
+    <div id="rr-team" class="rr-team"></div>
+    <div id="rr-desc" class="rr-desc"></div>
+    <button class="btn btn-secondary mt8" onclick="showScreen('screen-join')">Запомнил ✓</button>
+  </div>
+</div>
+
+<!-- SETUP -->
+<div id="screen-setup" class="screen">
+  <div class="hdr">
+    <div class="btn-icon" onclick="showScreen('screen-menu')">←</div>
+    <div class="hdr-title">Новая игра</div>
+    <div class="btn-icon" onclick="startGame()">▶</div>
+  </div>
+  <div class="tabs">
+    <div class="tab active" onclick="setupTab('general',this)">Общее</div>
+    <div class="tab" onclick="setupTab('roles',this)">Роли</div>
+    <div class="tab" onclick="setupTab('settings',this)">Настройки</div>
+  </div>
+  <div id="setup-general" class="scroll-area">
+    <div class="card">
+      <div class="card-title">Режим раздачи ролей</div>
+      <div style="display:flex;gap:8px;margin-bottom:10px;">
+        <button class="btn btn-primary btn-sm" id="mode-auto" onclick="setAssignMode('auto')" style="flex:1">🎲 Авто</button>
+        <button class="btn btn-secondary btn-sm" id="mode-manual" onclick="setAssignMode('manual')" style="flex:1">✏️ Вручную</button>
+      </div>
+      <div class="form-group mb8"><label class="inp-label">Количество игроков</label><input class="inp" id="setup-players" type="number" value="10" min="4" max="30" oninput="updateSetupPreview();if(assignMode==='manual')renderManualPlayers()"></div>
+      <div class="form-group mb8"><label class="inp-label">Пароль (необязательно)</label><input class="inp" id="setup-password" type="text" placeholder="Оставьте пустым — без пароля"></div>
+    </div>
+    <div id="auto-mode-block" class="card">
+      <div class="card-title">Распределение ролей</div>
+      <div id="setup-preview-content"></div>
+      <div id="setup-warn" class="alert-box alert-warn mt8" style="display:none"></div>
+    </div>
+    <div id="manual-mode-block" class="card" style="display:none">
+      <div class="card-title">Ввод игроков вручную</div>
+      <div id="manual-players-list"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Кастомные роли</div>
+      <div id="custom-roles-list"></div>
+      <button class="btn btn-secondary btn-full mt8" onclick="openModal('modal-custom-role')">+ Добавить роль</button>
+    </div>
+  </div>
+  <div id="setup-roles" class="scroll-area" style="display:none">
+    <div class="card">
+      <div class="card-title">Активные роли</div>
+      <div class="text-muted mb8" style="font-size:12px;">Авто-раздача использует только выбранные. При ручном вводе с фильтром — тоже.</div>
+      <div class="setting-row mb8"><div><div class="setting-label">Фильтровать ручной ввод по активным ролям</div></div><div class="toggle-switch" id="tog-filter-manual" onclick="toggleSetting('filterManual',this)"></div></div>
+      <div id="roles-toggles"></div>
+    </div>
+  </div>
+  <div id="setup-settings" class="scroll-area" style="display:none">
+    <div class="card">
+      <div class="card-title">Красотка</div>
+      <div class="setting-row"><div><div class="setting-label">Может ходить к себе</div></div><div class="toggle-switch" id="tog-beauty-self" onclick="toggleSetting('beautySelf',this)"></div></div>
+      <div class="setting-row"><div><div class="setting-label">Ходить к одному подряд</div></div><div class="toggle-switch on" id="tog-beauty-repeat" onclick="toggleSetting('beautyRepeat',this)"></div></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Доктор — режим</div>
+      <div style="display:flex;flex-direction:column;gap:6px;">
+        <button class="btn btn-secondary" id="dmode-0" onclick="setDoctorMode(0)">Без ограничений</button>
+        <button class="btn btn-primary" id="dmode-1" onclick="setDoctorMode(1)">Ко всем через раз (вкл. себя)</button>
+        <button class="btn btn-secondary" id="dmode-2" onclick="setDoctorMode(2)">Через раз, к себе только 1 раз</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Потрошитель — режим</div>
+      <div style="display:flex;flex-direction:column;gap:6px;">
+        <button class="btn btn-secondary" id="rmode-0" onclick="setRipperMode(0)">Убивает активных, умирает от обывателей</button>
+        <button class="btn btn-primary" id="rmode-1" onclick="setRipperMode(1)">Убивает активных, от обывателей — ничего</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Детектив</div>
+      <div class="setting-row"><div><div class="setting-label">Умирает при стрельбе в любого</div><div class="setting-sub">По умолчанию — только при красном</div></div><div class="toggle-switch" id="tog-det-any" onclick="toggleSetting('detDiesAny',this)"></div></div>
+    </div>
+    <div class="card">
+      <div class="card-title">🎵 Музыка</div>
+      <div class="card-title" style="margin-top:0;">Режим музыки</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;">
+        <button class="btn btn-secondary btn-sm" id="mmode-manual" onclick="setMusicMode('manual')" style="flex:1">🎛 Вручную</button>
+        <button class="btn btn-primary btn-sm" id="mmode-auto" onclick="setMusicMode('auto')" style="flex:1">🌙 Авто</button>
+      </div>
+      <div class="text-muted" id="mmode-desc" style="font-size:11px;margin-bottom:4px;">Авто: вкл при ночи, выкл при дне. Кнопка ♪ — пауза.</div>
+      <div class="text-muted" style="font-size:10px;margin-bottom:4px;">🔵 Bluetooth: подключите колонку в ОС до старта — браузер использует системный аудиовыход автоматически.</div>
+      <div style="display:flex;align-items:center;gap:10px;margin-top:8px;">
+        <span class="inp-label" style="white-space:nowrap;margin-bottom:0;">Громкость</span>
+        <input type="range" id="music-volume" min="1" max="100" value="20" style="flex:1;accent-color:var(--accent);" oninput="setMusicVolume(this.value)">
+        <span id="vol-label" style="font-size:12px;color:var(--text2);width:30px;">20</span>
+      </div>
+      <div class="card-title" style="margin-top:12px;">Треки</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;">
+        <button class="btn btn-primary btn-sm" id="trk-0" onclick="selectTrack(0)">🌑 Ночь</button>
+        <button class="btn btn-secondary btn-sm" id="trk-1" onclick="selectTrack(1)">🔮 Мистика</button>
+        <button class="btn btn-secondary btn-sm" id="trk-2" onclick="selectTrack(2)">🌊 Тихая</button>
+        <button class="btn btn-secondary btn-sm" onclick="pickMusicFile()">📁 С телефона</button>
+      </div>
+      <input type="file" id="music-file-input" accept="audio/*" style="display:none" onchange="loadMusicFile(this)">
+      <div id="custom-track-name" class="text-muted mt8" style="font-size:11px;"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">🔔 Будильник</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
+        <button class="btn btn-secondary btn-sm" onclick="testAlarm(0)">🔔 Классика</button>
+        <button class="btn btn-secondary btn-sm" onclick="testAlarm(1)">🎵 Низкий</button>
+        <button class="btn btn-secondary btn-sm" onclick="testAlarm(2)">📯 Горн</button>
+        <button class="btn btn-secondary btn-sm" onclick="testAlarm(3)">🔊 Пульс</button>
+      </div>
+      <div class="setting-row"><div><div class="setting-label">Повторений</div></div>
+        <select class="inp" id="alarm-repeats" style="width:70px;padding:6px 8px;" onchange="G.settings.alarmRepeats=parseInt(this.value)">
+          <option value="1">1</option><option value="2">2</option><option value="3" selected>3</option><option value="5">5</option>
+        </select>
+      </div>
+    </div>
+  </div>
+  <div class="bottom-bar"><button class="btn btn-primary btn-full" onclick="startGame()">▶ Начать игру</button></div>
+</div>
+
+<!-- ROLE REVIEW (after auto assign) -->
+<div id="screen-role-review" class="screen">
+  <div class="hdr">
+    <div class="hdr-title">Состав игры</div>
+    <div class="btn-icon" onclick="showSetup()">←</div>
+  </div>
+  <div class="scroll-area" id="role-review-list"></div>
+  <div class="bottom-bar">
+    <button class="btn btn-secondary" style="flex:1" onclick="showSetup()">← Изменить</button>
+    <button class="btn btn-primary" style="flex:1" onclick="confirmStartGame()">Начать игру ▶</button>
+  </div>
+</div>
+
+<!-- GAME -->
+<div id="screen-game" class="screen">
+  <div class="hdr">
+    <div><div class="hdr-title" id="game-phase-title">Ночь 1</div><div class="hdr-sub" id="game-phase-sub">Ночная фаза</div></div>
+    <div style="display:flex;gap:5px;">
+      <div class="btn-icon" id="hdr-music-btn" onclick="toggleMusic()" title="Музыка">♪</div>
+      <div class="btn-icon" onclick="showScreen('screen-timer')">⏱</div>
+      <div class="btn-icon" onclick="showNotes()">📝</div>
+      <div class="btn-icon" onclick="endGame()">⏹</div>
+    </div>
+  </div>
+  <div class="stats-row">
+    <div class="stat-pill alive"><div class="n" id="stat-alive">0</div><div class="l">ЖИВЫХ</div></div>
+    <div class="stat-pill maf"><div class="n" id="stat-mafia">0</div><div class="l">МАФИЯ</div></div>
+    <div class="stat-pill town-a"><div class="n" id="stat-town">0</div><div class="l">МИРНЫХ</div></div>
+    <div class="stat-pill dead"><div class="n" id="stat-dead">0</div><div class="l">УБИТЫХ</div></div>
+    <div class="stat-pill voted"><div class="n" id="stat-voted">0</div><div class="l">ВЫГОЛ.</div></div>
+    <div class="stat-pill" style="border-color:var(--blue);"><div class="n" id="stat-silent" style="color:var(--blue2);">0</div><div class="l">МОЛЧ.</div></div>
+  </div>
+  <div class="tabs">
+    <div class="tab active" onclick="gameTab('players',this)">Игроки</div>
+    <div class="tab" onclick="gameTab('night',this)">Ночь</div>
+    <div class="tab" onclick="gameTab('day',this)">День</div>
+    <div class="tab" onclick="gameTab('log',this)">Журнал</div>
+  </div>
+  <div id="gtab-players" class="scroll-area"><div style="padding-bottom:4px;display:flex;justify-content:flex-end;"><button class="btn btn-secondary btn-sm" id="add-player-btn" onclick="openAddPlayer()" style="font-size:11px;">➕ Добавить игрока</button></div><div id="player-list"></div></div>
+  <div id="gtab-night" class="scroll-area" style="display:none">
+    <div class="text-center mb8"><span class="night-num-badge" id="night-badge">🌙 Ночь 1</span></div>
+    <div id="night-steps"></div>
+  </div>
+  <div id="gtab-day" class="scroll-area" style="display:none">
+    <div id="night-summary-day"></div>
+    <div class="card">
+      <div class="card-title">⏱ Таймеры дня</div>
+      <div style="display:flex;gap:8px;margin-bottom:8px;">
+        <div style="flex:1;text-align:center;">
+          <div style="font-size:10px;color:var(--text2);margin-bottom:3px;">РЕЧЬ ИГРОКА</div>
+          <div class="timer-display" id="day-t1-disp" style="font-size:26px;padding:2px 0;">1:00</div>
+          <div style="display:flex;gap:3px;flex-wrap:wrap;justify-content:center;margin-top:4px;">
+            <span class="timer-preset" style="padding:3px 5px;font-size:10px;" onclick="setDayTimerPreset(1,10)">10с</span>
+            <span class="timer-preset" style="padding:3px 5px;font-size:10px;" onclick="setDayTimerPreset(1,20)">20с</span>
+            <span class="timer-preset" style="padding:3px 5px;font-size:10px;" onclick="setDayTimerPreset(1,30)">30с</span>
+            <span class="timer-preset" style="padding:3px 5px;font-size:10px;" onclick="setDayTimerPreset(1,60)">1м</span>
+            <span class="timer-preset" style="padding:3px 5px;font-size:10px;" onclick="setDayTimerPreset(1,120)">2м</span>
+          </div>
+        </div>
+        <div style="flex:1;text-align:center;">
+          <div style="font-size:10px;color:var(--text2);margin-bottom:3px;">ОПРАВДАНИЕ</div>
+          <div class="timer-display" id="day-t2-disp" style="font-size:26px;padding:2px 0;">0:30</div>
+          <div style="display:flex;gap:3px;flex-wrap:wrap;justify-content:center;margin-top:4px;">
+            <span class="timer-preset" style="padding:3px 5px;font-size:10px;" onclick="setDayTimerPreset(2,10)">10с</span>
+            <span class="timer-preset" style="padding:3px 5px;font-size:10px;" onclick="setDayTimerPreset(2,20)">20с</span>
+            <span class="timer-preset" style="padding:3px 5px;font-size:10px;" onclick="setDayTimerPreset(2,30)">30с</span>
+            <span class="timer-preset" style="padding:3px 5px;font-size:10px;" onclick="setDayTimerPreset(2,60)">1м</span>
+            <span class="timer-preset" style="padding:3px 5px;font-size:10px;" onclick="setDayTimerPreset(2,120)">2м</span>
+          </div>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-primary btn-sm" id="day-t1-btn" onclick="startDayTimer(1)" style="flex:1">▶ Речь</button>
+        <button class="btn btn-primary btn-sm" id="day-t2-btn" onclick="startDayTimer(2)" style="flex:1">▶ Оправд.</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Выставить на голосование</div>
+      <div class="vote-grid" id="vote-grid"></div>
+      <div id="nominated-list" class="text-muted mb8">Никто не выставлен</div>
+      <div class="card-title" style="margin-top:10px;">Выголосовать из выставленных</div>
+      <div class="vote-grid" id="vote-out-grid"></div>
+      <div id="vote-out-list" class="text-muted mb8">Не выбраны</div>
+      <button class="btn btn-danger btn-full" onclick="voteNominated()">Выголосовать отмеченных</button>
+    </div>
+    <div class="card">
+      <div class="card-title">Управление фазами</div>
+      <button class="btn btn-secondary btn-full mb8" onclick="returnToNightEdit()">↩ Вернуться к правке ночи</button>
+      <div class="row">
+        <button class="btn btn-secondary" style="flex:1" onclick="goNight()">🌙 Следующая ночь</button>
+        <button class="btn btn-secondary" style="flex:1" onclick="checkWin()">🏆 Победа?</button>
+      </div>
+    </div>
+  </div>
+  <div id="gtab-log" class="scroll-area" style="display:none">
+    <div style="display:flex;gap:8px;margin-bottom:10px;">
+      <button class="btn btn-secondary btn-sm" style="flex:1" onclick="exportReport()">📄 Экспорт .txt</button>
+      <button class="btn btn-secondary btn-sm" style="flex:1" onclick="clearLog()">🗑 Очистить</button>
+    </div>
+    <div id="game-log"></div>
+  </div>
+</div>
+
+<!-- TIMER -->
+<div id="screen-timer" class="screen">
+  <div class="hdr"><div class="hdr-title">Таймер</div><div class="btn-icon" onclick="showScreen('screen-game')">✕</div></div>
+  <div class="scroll-area">
+    <div class="timer-display" id="timer-display">3:00</div>
+    <div class="timer-row">
+      <div class="timer-preset" onclick="setTimer(60)">1 мин</div>
+      <div class="timer-preset" onclick="setTimer(120)">2 мин</div>
+      <div class="timer-preset active-preset" onclick="setTimer(180)">3 мин</div>
+      <div class="timer-preset" onclick="setTimer(300)">5 мин</div>
+    </div>
+    <div class="form-group mb8"><label class="inp-label">Своё время (сек)</label><input class="inp" id="timer-custom" type="number" placeholder="120" onchange="setTimer(parseInt(this.value)||120)"></div>
+    <hr class="divider">
+    <div class="card-title mb8">Музыка</div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-secondary" style="flex:1" id="music-btn" onclick="toggleMusic()">▶ Включить</button>
+      <button class="btn btn-secondary" style="flex:1" onclick="stopMusic()">⏹ Стоп</button>
+      <button class="btn btn-secondary btn-sm" onclick="nextTrack()">⏭</button>
+    </div>
+  </div>
+  <div class="bottom-bar">
+    <button class="btn btn-primary" style="flex:1" id="timer-start-btn" onclick="startTimer()">▶ Старт</button>
+    <button class="btn btn-secondary" onclick="resetTimer()">↺</button>
+  </div>
+</div>
+
+<!-- SIMULATION -->
+<div id="screen-sim" class="screen">
+  <div class="hdr"><div class="hdr-title">Симуляция</div><div class="btn-icon" onclick="showScreen('screen-menu')">✕</div></div>
+  <div class="tabs">
+    <div class="tab active" onclick="simTab('learn',this)">Обучение</div>
+    <div class="tab" onclick="simTab('auto',this)">Авто-игра</div>
+  </div>
+  <div id="stab-learn" class="scroll-area"><div id="sim-roles-list"></div></div>
+  <div id="stab-auto" class="scroll-area" style="display:none">
+    <div class="form-group mb8"><label class="inp-label">Количество игроков</label><input class="inp" id="sim-count" type="number" value="10" min="6" max="20"></div>
+    <button class="btn btn-primary btn-full mb8" onclick="runAutoSim()">▶ Запустить</button>
+    <div id="sim-log"></div>
+  </div>
+</div>
+
+<!-- RULES -->
+<div id="screen-rules" class="screen">
+  <div class="hdr"><div class="hdr-title">Правила ролей</div><div class="btn-icon" onclick="showScreen('screen-menu')">✕</div></div>
+  <div class="scroll-area" id="rules-content"></div>
+</div>
+
+<!-- SETTINGS -->
+<div id="screen-settings" class="screen">
+  <div class="hdr"><div class="hdr-title">Настройки</div><div class="btn-icon" onclick="showScreen('screen-menu')">✕</div></div>
+  <div class="scroll-area">
+    <div class="card"><div class="card-title">Интерфейс</div>
+      <div class="setting-row"><div><div class="setting-label">Показывать роли в списке</div></div><div class="toggle-switch on" id="tog-show-roles" onclick="toggleSetting('showRoles',this)"></div></div>
+    </div>
+    <div class="card"><div class="card-title">Сброс</div><button class="btn btn-danger btn-full" onclick="if(confirm('Сбросить?'))localStorage.clear(),location.reload()">Сбросить все данные</button></div>
+    <div class="card"><div class="card-title">📤 Экспорт / Импорт настроек</div>
+      <div style="font-size:12px;color:var(--text2);margin-bottom:8px;">Сохраните настройки и роли для переноса на другое устройство.</div>
+      <button class="btn btn-secondary btn-full mb8" onclick="exportSettings()">📤 Экспортировать настройки</button>
+      <label class="inp-label">Импортировать из файла</label>
+      <input type="file" id="import-settings-file" accept=".json" style="display:none" onchange="importSettingsFile(this)">
+      <button class="btn btn-secondary btn-full" onclick="document.getElementById('import-settings-file').click()">📥 Загрузить настройки (.json)</button>
+    </div>
+  </div>
+</div>
+
+<!-- WIN -->
+<div id="screen-win" class="screen">
+  <div class="win-card">
+    <div id="win-icon" class="win-icon">🏆</div>
+    <div id="win-title" class="win-title">Победа!</div>
+    <div id="win-sub" class="win-sub"></div>
+    <button class="btn btn-primary mt8" onclick="showScreen('screen-menu')">В главное меню</button>
+    <button class="btn btn-secondary mt8" onclick="exportReport()">📄 Экспорт отчёта</button>
+  </div>
+</div>
+
+<!-- HISTORY -->
+<div id="screen-history" class="screen">
+  <div class="hdr"><div class="hdr-title">История игр</div><div class="btn-icon" onclick="showScreen('screen-menu')">✕</div></div>
+  <div class="scroll-area" id="history-content"></div>
+</div>
+<div id="screen-history-detail" class="screen">
+  <div class="hdr"><div class="btn-icon" onclick="showHistory()">←</div><div class="hdr-title">Детали игры</div></div>
+  <div class="scroll-area" id="history-detail"></div>
+</div>
+
+<!-- MODALS -->
+<div class="modal-overlay" id="modal-add-player">
+  <div class="modal"><button class="modal-close" onclick="closeModal('modal-add-player')">✕</button>
+    <div class="modal-title">➕ Добавить игрока</div>
+    <div class="form-group"><label class="inp-label">Имя</label><input class="inp" id="ap-name" placeholder="Имя игрока"></div>
+    <div class="form-group"><label class="inp-label">Роль</label><select class="inp" id="ap-role"></select></div>
+    <button class="btn btn-primary btn-full mt8" onclick="doAddPlayer()">Добавить</button>
+  </div>
+</div>
+<div class="modal-overlay" id="modal-notes">
+  <div class="modal"><button class="modal-close" onclick="closeModal('modal-notes')">✕</button>
+    <div class="modal-title">📝 Заметки</div>
+    <textarea class="notes-inp" id="notes-text" placeholder="Подозрения, версии..."></textarea>
+    <button class="btn btn-primary btn-full mt8" onclick="saveNotes()">Сохранить</button>
+  </div>
+</div>
+<div class="modal-overlay" id="modal-night-results">
+  <div class="modal"><button class="modal-close" onclick="closeModal('modal-night-results')">✕</button>
+    <div class="modal-title">🌙 Итоги ночи</div>
+    <div id="night-results-modal"></div>
+    <button class="btn btn-primary btn-full mt8" onclick="closeModal('modal-night-results');goDay()">☀ К фазе дня</button>
+  </div>
+</div>
+<div class="modal-overlay" id="modal-player-detail">
+  <div class="modal"><button class="modal-close" onclick="closeModal('modal-player-detail')">✕</button>
+    <div class="modal-title" id="mpd-title">Игрок</div>
+    <div id="mpd-content"></div>
+  </div>
+</div>
+<div class="modal-overlay" id="modal-custom-role">
+  <div class="modal"><button class="modal-close" onclick="closeModal('modal-custom-role')">✕</button>
+    <div class="modal-title">Кастомная роль</div>
+    <div class="form-group mb8"><label class="inp-label">Название</label><input class="inp" id="cr-name" placeholder="Шпион"></div>
+    <div class="form-group mb8"><label class="inp-label">Команда</label>
+      <select class="inp" id="cr-team"><option value="town">Мирный город</option><option value="mafia">Мафия</option><option value="yakuza">Якудза</option><option value="neutral">Нейтральный</option></select></div>
+    <div class="form-group mb8"><label class="inp-label">Описание</label><textarea class="notes-inp" id="cr-desc" placeholder="Просыпается ночью и..."></textarea></div>
+    <div class="form-group mb8"><label class="inp-label">Стреляет?</label><select class="inp" id="cr-shoots"><option value="0">Нет</option><option value="1">Да</option></select></div>
+    <button class="btn btn-primary btn-full mt8" onclick="saveCustomRole()">Сохранить</button>
+  </div>
+</div>
+<div class="modal-overlay" id="modal-warn">
+  <div class="modal"><button class="modal-close" onclick="closeModal('modal-warn')">✕</button>
+    <div class="modal-title">⚠️ Предупреждение</div>
+    <div id="warn-text" style="font-size:14px;line-height:1.6;margin-bottom:14px;"></div>
+    <button class="btn btn-primary btn-full" onclick="closeModal('modal-warn')">Понял</button>
+  </div>
+</div>
+<div class="modal-overlay" id="modal-rename">
+  <div class="modal"><button class="modal-close" onclick="closeModal('modal-rename')">✕</button>
+    <div class="modal-title">✏️ Имя игрока</div>
+    <div class="form-group mb8"><label class="inp-label">Номер</label><input class="inp" id="rename-num" type="number" placeholder="#"></div>
+    <div class="form-group mb8"><label class="inp-label">Имя</label><input class="inp" id="rename-name" placeholder="Введите имя"></div>
+    <button class="btn btn-primary btn-full mt8" onclick="savePlayerName()">Сохранить</button>
+  </div>
+</div>
+
+<script>
+// ===== ROLE DEFINITIONS =====
+const ROLES_DEF={
+  mafia:    {name:'Мафия',      icon:'🔫',team:'mafia',  shoots:true, badge:'rb-mafia',
+    desc:'Просыпается ночью, стреляет в любого. Самострел — предупреждение. Несострел если не договорились. Последнее слово — за Доном (если озвучено ведущим).'},
+  don:      {name:'Дон',        icon:'🎩',team:'mafia',  shoots:true, badge:'rb-don',
+    desc:'Просыпается с мафией, затем отдельно ищет Шерифа. Последнее слово при выстреле мафии.'},
+  yakuza:   {name:'Якудза',     icon:'⚔️',team:'yakuza', shoots:true, badge:'rb-yakuza',
+    desc:'Отдельная группировка. Нет Дона. Несострел если не договорились. Видят только своих.'},
+  detective:{name:'Детектив',   icon:'🔍',team:'town',   shoots:true, badge:'rb-detective',
+    desc:'Стреляет или проверяет — на выбор. При проверке результат приватный. При выстреле — объявляется днём. Погибает если застрелил красного (по умолчанию).'},
+  sheriff:  {name:'Шериф',      icon:'🔰',team:'town',   shoots:false,badge:'rb-sheriff',
+    desc:'Проверяет игроков ночью. Маньяк показывается красным пока жива мафия, после — чёрным.'},
+  doctor:   {name:'Доктор',     icon:'💊',team:'town',   shoots:false,badge:'rb-doctor',
+    desc:'Защищает игрока от любого выстрела. Сильнее всех защит. Режим настраивается.'},
+  beauty:   {name:'Красотка',   icon:'💋',team:'town',   shoots:false,badge:'rb-beauty',
+    desc:'Приходит к игроку. Если к нему идёт стреляющая роль — игрок выживает и молчит весь день. Если стреляют в саму Красотку — умирает она и игрок куда она ходила.'},
+  maniac:   {name:'Маньяк',     icon:'🔪',team:'neutral',shoots:true, badge:'rb-maniac',
+    desc:'Играет сам за себя. Не может отказаться от выстрела. Выигрывает 1 на 1 с нестреляющим.'},
+  priest:   {name:'Священник',  icon:'✝️',team:'town',   shoots:false,badge:'rb-priest',
+    desc:'Ищет маньяка. При нахождении — умирает молча, ведущий объявляет утром.'},
+  judge:    {name:'Судья',      icon:'⚖️',team:'town',   shoots:false,badge:'rb-judge',
+    desc:'Даёт иммунитет одному игроку. Его нельзя выголосовать в этот день.'},
+  ripper:   {name:'Потрошитель',icon:'🗡️',team:'town',   shoots:true, badge:'rb-ripper',
+    desc:'Стреляет ночью. Убивает активные роли. Поведение с обывателями настраивается. Доктор сильнее.'},
+  civilian: {name:'Обыватель',  icon:'👤',team:'town',   shoots:false,badge:'rb-civilian',
+    desc:'Голосует днём. Вычисляет и выголосовывает чёрных.'},
+};
+const NIGHT_ORDER=['beauty','mafia','don','yakuza','detective','sheriff','doctor','judge','priest','ripper','maniac'];
+
+// ===== GAME STATE =====
+let G={
+  phase:'menu',nightNum:0,dayNum:0,
+  players:[],log:[],nightActions:{},nightResults:null,
+  settings:{
+    beautySelf:false,beautyRepeat:true,doctorMode:1,ripperMode:1,
+    detDiesAny:false,showRoles:true,nightMusicAuto:false,musicMode:'auto',
+    filterManual:false,musicVolume:20,alarmRepeats:3,musicTrack:0
+  },
+  customRoles:[],
+  // DEFAULT ACTIVE ROLES
+  activeRoles:{mafia:true,don:true,yakuza:false,detective:false,sheriff:true,doctor:true,beauty:true,maniac:true,priest:false,judge:false,ripper:false},
+  password:'',notes:'',
+  beautyLastTarget:null,doctorLastTarget:null,doctorSelfUsed:false,
+  currentNightStepIdx:0,_nightSteps:[],
+  nominationOrder:[],voteOutOrder:[],
+};
+
+// ===== NAV =====
+function showScreen(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active');}
+function setupTab(name,el){
+  ['general','roles','settings'].forEach(t=>document.getElementById('setup-'+t).style.display=t===name?'':'none');
+  el.closest('.tabs').querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));el.classList.add('active');
+}
+function gameTab(name,el){
+  ['players','night','day','log'].forEach(t=>document.getElementById('gtab-'+t).style.display=t===name?'':'none');
+  el.closest('.tabs').querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));el.classList.add('active');
+}
+function switchGameTab(name){
+  const names=['players','night','day','log'];
+  document.querySelectorAll('#screen-game .tab').forEach((t,i)=>t.classList.toggle('active',names[i]===name));
+  names.forEach(n=>document.getElementById('gtab-'+n).style.display=n===name?'':'none');
+}
+function simTab(name,el){
+  ['learn','auto'].forEach(t=>document.getElementById('stab-'+t).style.display=t===name?'':'none');
+  el.closest('.tabs').querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));el.classList.add('active');
+}
+
+// ===== SETUP =====
+let assignMode='auto';
+function showSetup(){renderRoleToggles();updateSetupPreview();applyModeUI();applyDoctorModeUI();applyRipperModeUI();applyToggleUI();showScreen('screen-setup');}
+
+function setAssignMode(m){
+  assignMode=m;
+  document.getElementById('mode-auto').className=m==='auto'?'btn btn-primary btn-sm':'btn btn-secondary btn-sm';
+  document.getElementById('mode-manual').className=m==='manual'?'btn btn-primary btn-sm':'btn btn-secondary btn-sm';
+  document.getElementById('auto-mode-block').style.display=m==='auto'?'':'none';
+  document.getElementById('manual-mode-block').style.display=m==='manual'?'':'none';
+  if(m==='manual')renderManualPlayers();
+}
+function applyModeUI(){setAssignMode(assignMode);}
+
+function renderRoleToggles(){
+  const tl={mafia:'Мафия',yakuza:'Якудза',neutral:'Нейтральный',town:'Мирный город'};
+  document.getElementById('roles-toggles').innerHTML=Object.entries(ROLES_DEF).filter(([k])=>k!=='civilian').map(([key,rd])=>
+    `<div class="role-toggle"><div><span style="font-size:14px;font-weight:600;">${rd.icon} ${rd.name}</span><div style="font-size:11px;color:var(--text2);margin-top:1px;">${tl[rd.team]}</div></div><div class="toggle-switch ${G.activeRoles[key]?'on':''}" id="rtog-${key}" onclick="toggleRole('${key}',this)"></div></div>`
+  ).join('');
+}
+function toggleRole(key,el){G.activeRoles[key]=!G.activeRoles[key];el.classList.toggle('on',G.activeRoles[key]);updateSetupPreview();}
+
+function updateSetupPreview(){
+  const n=parseInt(document.getElementById('setup-players').value)||10;
+  const hasY=G.activeRoles.yakuza;
+  const nMbase=Math.round(n*(hasY?.15:.30));
+  const nM=Math.max(1,nMbase);
+  const nY=hasY?Math.max(1,Math.round(n*.15)):0;
+  const nC=Math.max(1,Math.round(n*.30));
+  const nA=n-nM-nY-nC;
+  const activeKeys=['detective','sheriff','doctor','beauty','maniac','priest','judge','ripper'].filter(r=>G.activeRoles[r]);
+  const warn=document.getElementById('setup-warn');
+  // Only warn if MORE roles than slots
+  if(activeKeys.length>Math.max(0,nA)){
+    warn.style.display='';
+    warn.textContent=`⚠️ Включено ${activeKeys.length} активных ролей, слотов только ${Math.max(0,nA)}. Лишние не попадут.`;
+  } else warn.style.display='none';
+  const usedActive=Math.min(activeKeys.length,Math.max(0,nA));
+  const civCount=n-nM-nY-usedActive;
+  document.getElementById('setup-preview-content').innerHTML=`<div style="font-size:13px;line-height:2.1;color:var(--text2);">
+    <div>⚫ Мафия: <strong style="color:var(--text)">${nM}</strong>${hasY?' (15%)':' (30%)'}</div>
+    ${hasY?`<div>⚔️ Якудза: <strong style="color:var(--text)">${nY}</strong> (15%)</div>`:''}
+    <div>👤 Обыватели: <strong style="color:var(--text)">${civCount}</strong></div>
+    <div>🔴 Активных красных: <strong style="color:var(--text)">${usedActive}</strong></div>
+    <div>Всего: <strong style="color:var(--accent)">${n}</strong></div>
+  </div>`;
+}
+
+function renderManualPlayers(){
+  const n=parseInt(document.getElementById('setup-players').value)||10;
+  const useFilter=G.settings.filterManual;
+  const allKeys=Object.keys(ROLES_DEF).concat(G.customRoles.map(r=>r.key));
+  const filtered=useFilter?allKeys.filter(k=>k==='civilian'||G.activeRoles[k]):allKeys;
+  const opts=filtered.map(k=>{const rd=getRoleDef(k);return`<option value="${k}">${rd.name}</option>`;}).join('');
+  let h='';
+  for(let i=1;i<=n;i++){
+    const prev=G.players.find(p=>p.num===i);
+    h+=`<div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;">
+      <div style="width:24px;font-weight:700;font-size:13px;color:var(--text2);">#${i}</div>
+      <input class="inp" id="mp-name-${i}" placeholder="Имя" style="flex:1;padding:8px 10px;" value="${prev?prev.name:''}">
+      <select class="inp" id="mp-role-${i}" style="flex:1;padding:8px 6px;">${opts}</select>
+    </div>`;
+  }
+  document.getElementById('manual-players-list').innerHTML=h;
+  G.players.forEach(p=>{const el=document.getElementById(`mp-role-${p.num}`);if(el)el.value=p.role;});
+}
+
+function toggleSetting(key,el){
+  G.settings[key]=!G.settings[key];
+  el.classList.toggle('on',G.settings[key]);
+  if(key==='filterManual'&&assignMode==='manual')renderManualPlayers();
+}
+function applyToggleUI(){
+  const m={beautySelf:'tog-beauty-self',beautyRepeat:'tog-beauty-repeat',detDiesAny:'tog-det-any',showRoles:'tog-show-roles',filterManual:'tog-filter-manual'};
+  // Music mode buttons
+  const mmAuto=document.getElementById('mmode-auto'),mmMan=document.getElementById('mmode-manual');
+  if(mmAuto&&mmMan){const isAuto=G.settings.musicMode==='auto';mmAuto.className=isAuto?'btn btn-primary btn-sm':'btn btn-secondary btn-sm';mmMan.className=!isAuto?'btn btn-primary btn-sm':'btn btn-secondary btn-sm';}
+  for(const[k,id]of Object.entries(m)){const el=document.getElementById(id);if(el)el.classList.toggle('on',!!G.settings[k]);}
+}
+function setDoctorMode(m){G.settings.doctorMode=m;applyDoctorModeUI();}
+function applyDoctorModeUI(){[0,1,2].forEach(i=>{const el=document.getElementById('dmode-'+i);if(el){el.className=G.settings.doctorMode===i?'btn btn-primary':'btn btn-secondary';}});}
+function setRipperMode(m){G.settings.ripperMode=m;applyRipperModeUI();}
+function applyRipperModeUI(){[0,1].forEach(i=>{const el=document.getElementById('rmode-'+i);if(el){el.className=G.settings.ripperMode===i?'btn btn-primary':'btn btn-secondary';}});}
+
+function saveCustomRole(){
+  const name=document.getElementById('cr-name').value.trim();if(!name)return;
+  G.customRoles.push({key:'custom_'+Date.now(),name,team:document.getElementById('cr-team').value,desc:document.getElementById('cr-desc').value,shoots:document.getElementById('cr-shoots').value==='1',icon:'🃏',badge:'rb-custom',isCustom:true});
+  renderCustomRoles();closeModal('modal-custom-role');
+}
+function renderCustomRoles(){
+  document.getElementById('custom-roles-list').innerHTML=G.customRoles.map((r,i)=>
+    `<div class="role-toggle"><div><span style="font-size:14px;font-weight:600;">${r.icon} ${r.name}</span></div><div class="btn-icon" onclick="G.customRoles.splice(${i},1);renderCustomRoles()">🗑</div></div>`
+  ).join('');
+}
+
+// ===== BUILD PLAYER POOL =====
+function buildPool(n){
+  const hasY=G.activeRoles.yakuza;
+  let nM=Math.max(1,Math.round(n*(hasY?.15:.30)));
+  const nY=hasY?Math.max(1,Math.round(n*.15)):0;
+  // Civilians = remainder after mafia+yakuza+active, at least 30%
+  const nCmin=Math.max(1,Math.round(n*.30));
+  let pool=[];
+  if(G.activeRoles.don&&nM>1){pool.push('don');nM--;}
+  for(let i=0;i<nM;i++)pool.push('mafia');
+  for(let i=0;i<nY;i++)pool.push('yakuza');
+  const redR=['detective','sheriff','doctor','beauty','maniac','priest','judge','ripper'].filter(r=>G.activeRoles[r]);
+  let nA=n-pool.length-nCmin;
+  // Add each active role max once
+  for(let i=0;i<redR.length&&nA>0;i++){pool.push(redR[i]);nA--;}
+  G.customRoles.forEach(cr=>{if(pool.length<n-Math.max(0,n-pool.length-1))pool.push(cr.key);});
+  // Fill rest with civilians
+  while(pool.length<n)pool.push('civilian');
+  // Shuffle
+  for(let i=pool.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[pool[i],pool[j]]=[pool[j],pool[i]];}
+  return pool;
+}
+
+// ===== START GAME =====
+function startGame(){
+  const n=parseInt(document.getElementById('setup-players').value)||10;
+  G.password=document.getElementById('setup-password').value.trim();
+  G.players=[];G.log=[];G.nightNum=0;G.dayNum=0;G.nightActions={};G.nightResults=null;
+  G.beautyLastTarget=null;G.doctorLastTarget=null;G.doctorSelfUsed=false;
+  G.nominationOrder=[];G.voteOutOrder=[];
+
+  if(assignMode==='manual'){
+    const roles=[];
+    for(let i=1;i<=n;i++){
+      const name=document.getElementById(`mp-name-${i}`)?.value.trim()||`Игрок ${i}`;
+      const role=document.getElementById(`mp-role-${i}`)?.value||'civilian';
+      roles.push({num:i,name,role});
+    }
+    // Check proportions
+    const mafC=roles.filter(p=>p.role==='mafia'||p.role==='don').length;
+    const yakC=roles.filter(p=>p.role==='yakuza').length;
+    const hasY=yakC>0;
+    const expM=Math.round(n*(hasY?.15:.30));
+    const expY=hasY?Math.round(n*.15):0;
+    const expC=Math.round(n*.30);
+    const civC=roles.filter(p=>p.role==='civilian').length;
+    const warns=[];
+    if(Math.abs(mafC-expM)>1)warns.push(`Мафия: ${mafC} (ожидалось ~${expM})`);
+    if(hasY&&Math.abs(yakC-expY)>1)warns.push(`Якудза: ${yakC} (ожидалось ~${expY})`);
+    if(Math.abs(civC-expC)>1)warns.push(`Обыватели: ${civC} (ожидалось ~${expC})`);
+    if(warns.length>0){
+      if(!confirm(`⚠️ Пропорции нарушены:\n${warns.join('\n')}\nПродолжить?`)){
+        // Stay on setup, keep entered values
+        return;
+      }
+    }
+    roles.forEach(r=>G.players.push({...r,alive:true,voted:false,silent:false,immune:false,nominated:false,voteOut:false,actions:[]}));
+    // Go directly to game
+    doStartGame();
+  } else {
+    // Auto — show review screen first
+    const pool=buildPool(n);
+    for(let i=0;i<n;i++)G.players.push({num:i+1,name:'Игрок '+(i+1),role:pool[i],alive:true,voted:false,silent:false,immune:false,nominated:false,voteOut:false,actions:[]});
+    showRoleReview();
+  }
+}
+
+function showRoleReview(){
+  // Populate names from stored names
+  try{const saved=JSON.parse(localStorage.getItem('mafia_names')||'{}');G.players.forEach(p=>{if(saved[p.num])p.name=saved[p.num];});}catch(e){}
+  let h='';
+  G.players.forEach(p=>{
+    const rd=getRoleDef(p.role);
+    h+=`<div class="player-item">
+      <div class="player-num" style="border-color:${teamBorderColor(rd.team)}">${p.num}</div>
+      <div class="player-info">
+        <input class="inp" id="rr-name-${p.num}" value="${p.name}" placeholder="Имя" style="padding:6px 8px;font-size:13px;margin-bottom:2px;">
+        <div><span class="role-badge ${rd.badge}">${rd.icon} ${rd.name}</span></div>
+      </div>
+    </div>`;
+  });
+  document.getElementById('role-review-list').innerHTML=h;
+  showScreen('screen-role-review');
+}
+
+function confirmStartGame(){
+  // Collect names from review
+  G.players.forEach(p=>{
+    const el=document.getElementById(`rr-name-${p.num}`);
+    if(el&&el.value.trim())p.name=el.value.trim();
+  });
+  savePlayerNames();
+  doStartGame();
+}
+
+function doStartGame(){
+  // Sync activeRoles from actual player roles (critical for manual assignment)
+  const allRoleKeys=['detective','sheriff','doctor','beauty','maniac','priest','judge','ripper','don','yakuza'];
+  allRoleKeys.forEach(k=>{G.activeRoles[k]=G.players.some(p=>p.role===k);});
+  addLog('info',`🎮 Игра началась. ${G.players.length} игроков. Раздача: ${assignMode==='auto'?'автоматически 🎲':'вручную ✏️'}`);
+  updateStats();renderPlayerList();
+  showScreen('screen-game');
+  saveState();
+  goNight();
+}
+
+// ===== HELPERS =====
+function getRoleDef(k){if(ROLES_DEF[k])return ROLES_DEF[k];const cr=G.customRoles.find(r=>r.key===k);return cr||{name:k,icon:'🃏',team:'town',shoots:false,badge:'rb-custom',desc:''};}
+function teamBorderColor(t){return{mafia:'#888',yakuza:'#8e44ad',neutral:'#f39c12',town:'#c0392b'}[t]||'var(--border)';}
+function getPlayer(num){return G.players.find(p=>p.num===num)||null;}
+function getPlayerNumByRole(role){const p=G.players.find(p=>p.role===role&&p.alive);return p?p.num:null;}
+
+// ===== PLAYER LIST =====
+function renderPlayerList(){
+  const showR=G.settings.showRoles;
+  {const silEl=document.getElementById('stat-silent');if(silEl)silEl.textContent=G.players.filter(p=>p.alive&&p.silent).length;}
+  document.getElementById('player-list').innerHTML=G.players.map(p=>{
+    const rd=getRoleDef(p.role);
+    const parts=[];
+    if(!p.alive)parts.push(p.voted?'🗳 Выголосован':'💀 Убит');
+    if(p.silent)parts.push('🤫 Молчит');
+    if(p.immune)parts.push('⚖️ Иммунитет');
+    return`<div class="player-item${!p.alive?' dead':''}${p.silent?' silent':''}${p.nominated?' on-vote':''}" onclick="showPlayerDetail(${p.num})">
+      <div class="player-num" style="border-color:${teamBorderColor(rd.team)}">${p.num}</div>
+      <div class="player-info">
+        <div class="player-name">${p.name}</div>
+        ${showR?`<div class="player-role"><span class="role-badge ${rd.badge}">${rd.icon} ${rd.name}</span></div>`:''}
+        <div class="player-status">${parts.join(' · ')}</div>
+      </div>
+      <div class="player-actions">
+        <div class="p-btn" onclick="event.stopPropagation();openRename(${p.num})">✏️</div>
+        ${p.alive?`<div class="p-btn kill" onclick="event.stopPropagation();killPlayer(${p.num})">💀</div>`:`<div class="p-btn revive" onclick="event.stopPropagation();revivePlayer(${p.num})">✚</div>`}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function updateStats(){
+  const alive=G.players.filter(p=>p.alive);
+  const mafAlive=alive.filter(p=>getRoleDef(p.role).team==='mafia'||getRoleDef(p.role).team==='yakuza');
+  const townAlive=alive.filter(p=>getRoleDef(p.role).team==='town');
+  document.getElementById('stat-alive').textContent=alive.length;
+  document.getElementById('stat-mafia').textContent=mafAlive.length;
+  document.getElementById('stat-town').textContent=townAlive.length;
+  document.getElementById('stat-dead').textContent=G.players.filter(p=>!p.alive&&!p.voted).length;
+  document.getElementById('stat-voted').textContent=G.players.filter(p=>p.voted).length;
+  const silEl=document.getElementById('stat-silent');if(silEl)silEl.textContent=G.players.filter(p=>p.alive&&p.silent).length;
+}
+
+function killPlayer(num){
+  const p=getPlayer(num);if(!p||!p.alive)return;
+  p.alive=false;p.silent=false;p.immune=false;p.nominated=false;p.voteOut=false;
+  addLog('death',`💀 #${p.num} ${p.name} (${getRoleDef(p.role).name}) убит`);
+  updateStats();renderPlayerList();refreshPhaseUI();saveState();
+}
+function revivePlayer(num){
+  const p=getPlayer(num);if(!p||p.alive)return;
+  p.alive=true;p.voted=false;
+  addLog('info',`✚ #${p.num} ${p.name} воскрешён`);
+  updateStats();renderPlayerList();refreshPhaseUI();saveState();
+}
+function refreshPhaseUI(){
+  if(G.phase==='night'){renderNightSteps();}
+  else if(G.phase==='day'){buildDaySummary();buildVoteGrid();}
+}
+function openRename(num){const p=getPlayer(num);document.getElementById('rename-num').value=num;document.getElementById('rename-name').value=p?p.name:'';openModal('modal-rename');}
+function savePlayerName(){
+  const num=parseInt(document.getElementById('rename-num').value),name=document.getElementById('rename-name').value.trim();
+  const p=getPlayer(num);
+  if(p&&name){
+    p.name=name;
+    addLog('info',`✏️ #${num} переименован в «${name}»`);
+    savePlayerNames();
+  }
+  closeModal('modal-rename');renderPlayerList();refreshPhaseUI();saveState();
+}
+function savePlayerNames(){try{const n={};G.players.forEach(p=>n[p.num]=p.name);localStorage.setItem('mafia_names',JSON.stringify(n));}catch(e){}}
+
+function showPlayerDetail(num){
+  const p=getPlayer(num);if(!p)return;
+  const rd=getRoleDef(p.role);
+  document.getElementById('mpd-title').textContent=`#${p.num} ${p.name}`;
+  const hist=p.actions.map(a=>`<div style="font-size:12px;padding:3px 0;border-bottom:1px solid var(--border);">${a}</div>`).join('')||'<span class="text-muted">Нет действий</span>';
+  document.getElementById('mpd-content').innerHTML=`
+    <div style="text-align:center;margin-bottom:14px;"><div style="font-size:40px;">${rd.icon}</div><div class="role-badge ${rd.badge}" style="font-size:13px;padding:4px 14px;margin-top:6px;">${rd.name}</div></div>
+    <div class="card"><div class="card-title">История</div>${hist}</div>
+    <div style="display:flex;gap:8px;margin-top:8px;">
+      <button class="btn ${p.alive?'btn-danger':'btn-success'} btn-full" onclick="${p.alive?'killPlayer':'revivePlayer'}(${p.num});closeModal('modal-player-detail');">${p.alive?'💀 Убить':'✚ Оживить'}</button>
+      <button class="btn btn-secondary btn-full" onclick="toggleSilent(${p.num});closeModal('modal-player-detail');">${p.silent?'🔊 Снять':'🤫 Молчит'}</button>
+    </div>`;
+  openModal('modal-player-detail');
+}
+function toggleSilent(num){const p=getPlayer(num);if(!p)return;p.silent=!p.silent;updateStats();renderPlayerList();}
+
+// ===== NIGHT =====
+function goNight(){
+  G.nightNum++;G.nightActions={};G.phase='night';
+  G.players.forEach(p=>{if(p.alive){p.silent=false;p.immune=false;p.nominated=false;p.voteOut=false;}});
+  G.nominationOrder=[];G.voteOutOrder=[];
+  document.getElementById('game-phase-title').textContent=`Ночь ${G.nightNum}`;
+  document.getElementById('game-phase-sub').textContent='Ночная фаза';
+  document.getElementById('night-badge').textContent=`🌙 Ночь ${G.nightNum}`;
+  G.currentNightStepIdx=0;
+  addLog('night',`🌙 === НОЧЬ ${G.nightNum} ===`);
+  renderNightSteps();updateStats();renderPlayerList();
+  switchGameTab('night');saveState();
+  if(G.settings.nightMusicAuto){if(!musicPlaying&&!musicPaused)toggleMusic();else if(musicPaused)toggleMusic();}
+}
+
+function buildNightSteps(){
+  const alive=G.players.filter(p=>p.alive);
+  const aliveNums=alive.map(p=>`#${p.num}`).join(' ');
+  const steps=[];
+  for(const roleKey of NIGHT_ORDER){
+    if(roleKey==='don'){
+      const pl=G.players.filter(p=>p.role==='don');if(!pl.length)continue;
+      steps.push({key:'don-check',label:'Дон — поиск Шерифа',icon:'🎩',roleKey:'don',isDead:pl.every(p=>!p.alive),
+        inputs:[{id:'don-check-target',label:'Проверяет №',ph:'Номер'}],desc:'Просыпается отдельно.'});
+      continue;
+    }
+    if(roleKey==='mafia'){
+      const pl=G.players.filter(p=>p.role==='mafia'||p.role==='don');if(!pl.length)continue;
+      steps.push({key:'mafia',label:'Мафия + Дон',icon:'🔫',roleKey:'mafia',isDead:pl.every(p=>!p.alive),
+        inputs:[{id:'mafia-target',label:'Стреляет в №',ph:'0 = несострел'}],desc:`Живые: ${aliveNums}`});
+      continue;
+    }
+    // Use actual player roles (important for manual assignment mode)
+    const pl=G.players.filter(p=>p.role===roleKey);if(!pl.length)continue;
+    const rd=ROLES_DEF[roleKey];let inputs=[];
+    if(roleKey==='yakuza')inputs=[{id:'yakuza-target',label:'Стреляет в №',ph:'0 = несострел'}];
+    else if(roleKey==='detective')inputs=[{id:'det-action',label:'1 = стрелять, 2 = проверить',ph:'1 или 2'},{id:'det-target',label:'Цель №',ph:'Номер'}];
+    else if(roleKey==='sheriff')inputs=[{id:'sher-target',label:'Проверяет №',ph:'Номер'}];
+    else if(roleKey==='doctor')inputs=[{id:'doc-target',label:'Защищает №',ph:'Номер'}];
+    else if(roleKey==='beauty')inputs=[{id:'beauty-target',label:'Красотка идёт к №',ph:'Номер'}];
+    else if(roleKey==='maniac')inputs=[{id:'maniac-target',label:'Стреляет в №',ph:'Номер'}];
+    else if(roleKey==='priest')inputs=[{id:'priest-target',label:'Ищет маньяка — №',ph:'Номер'}];
+    else if(roleKey==='judge')inputs=[{id:'judge-target',label:'Иммунитет №',ph:'Номер'}];
+    else if(roleKey==='ripper')inputs=[{id:'ripper-target',label:'Идёт к №',ph:'Номер'}];
+    steps.push({key:roleKey,label:rd.name,icon:rd.icon,roleKey,isDead:pl.every(p=>!p.alive),inputs,desc:`Живые: ${aliveNums}`});
+  }
+  return steps;
+}
+
+function renderNightSteps(){
+  const steps=buildNightSteps();G._nightSteps=steps;
+  let h='';
+  steps.forEach((step,i)=>{
+    const isActive=i===G.currentNightStepIdx;
+    h+=`<div class="night-step${isActive?' active-step':''}${step.isDead?' dead-step':''}" id="nstep-${step.key}">
+      <div class="night-step-hdr">
+        <div class="step-num">${i+1}</div>
+        <div style="flex:1">
+          <div class="step-role">${step.icon} ${step.label}${step.isDead?' <span style="font-size:10px;color:var(--red2);font-weight:700;">УБИТ</span>':''}</div>
+          <div class="step-desc">${step.isDead?'Не просыпается':step.desc}</div>
+        </div>
+        <div class="btn-icon" onclick="setActiveStep(${i})" style="font-size:13px;width:28px;height:28px;">${isActive?'●':'○'}</div>
+      </div>
+      <div class="step-inputs">
+        ${step.isDead?'<div class="text-muted" style="font-size:12px;">Нет действия</div>':step.inputs.map(inp=>`
+          <label class="inp-label">${inp.label}</label>
+          <input class="inp" id="${inp.id}" type="number" placeholder="${inp.ph}" oninput="onNightInput('${inp.id}',this.value,'${step.key}')" value="${G.nightActions[inp.id]||''}">
+          <div class="check-result" id="cr-${inp.id}"></div>
+        `).join('')}
+        ${step.key==='mafia'&&!step.isDead?`<div style="display:flex;gap:6px;margin-top:6px;">
+          <button class="btn btn-secondary btn-sm" style="flex:1" onclick="markNoShot('mafia')">Несострел</button>
+          <button class="btn btn-secondary btn-sm" style="flex:1" onclick="showWarn('⚠️ САМОСТРЕЛ! Мафия стреляет в своего. Подтвердите осознанно.')">⚠️ Самострел</button>
+        </div>`:''}
+        ${step.key==='yakuza'&&!step.isDead?`<button class="btn btn-secondary btn-sm btn-full mt8" onclick="markNoShot('yakuza')">Несострел якудзы</button>`:''}
+      </div>
+    </div>`;
+  });
+  h+=`<div style="margin-top:14px;padding-bottom:20px;"><button class="btn btn-primary btn-full" onclick="finishNight()">Завершить ночь →</button></div>`;
+  document.getElementById('night-steps').innerHTML=h;
+}
+
+function setActiveStep(i){
+  G.currentNightStepIdx=i;
+  document.querySelectorAll('.night-step').forEach((el,j)=>{
+    el.classList.toggle('active-step',j===i);
+    const sn=el.querySelector('.step-num');
+    if(sn){sn.style.background=j===i?'var(--accent)':'var(--bg3)';sn.style.color=j===i?'#0a0a0f':'var(--text)';}
+    const btn=el.querySelector('.btn-icon');if(btn)btn.textContent=j===i?'●':'○';
+  });
+  const step=G._nightSteps[i];
+  if(step){const el=document.getElementById('nstep-'+step.key);if(el)el.scrollIntoView({behavior:'smooth',block:'center'});}
+}
+
+function onNightInput(id,val,stepKey){
+  const num=parseInt(val)||0;
+  G.nightActions[id]=num;
+  const crEl=document.getElementById('cr-'+id);if(!crEl)return;
+  if(!num){crEl.className='check-result';crEl.textContent='';return;}
+  const p=getPlayer(num);
+  if(p&&!p.alive){crEl.className='check-result show check-warn';crEl.innerHTML='⚠️ Этот игрок уже мёртв!';return;}
+
+  // Mafia self-shot
+  if(id==='mafia-target'&&p&&(p.role==='mafia'||p.role==='don')){
+    G.nightActions[id]=0;
+    crEl.className='check-result show check-warn';
+    crEl.innerHTML=`⚠️ САМОСТРЕЛ! Мафия стреляет в своего (#${num}). <button class="btn btn-danger btn-sm" style="margin-top:6px;" onclick="confirmSelfShot(${num})">Подтвердить самострел</button>`;
+    return;
+  }
+  if(id==='sher-target'&&p){
+    const rd=getRoleDef(p.role);const mafAlive=G.players.some(pl=>pl.alive&&(pl.role==='mafia'||pl.role==='don'));
+    let res,cls;
+    if(rd.team==='mafia'||rd.team==='yakuza'){res=`⚫ ЧЁРНЫЙ — ${rd.name}`;cls='check-black';}
+    else if(p.role==='maniac'){res=mafAlive?'🔴 КРАСНЫЙ (Маньяк — мафия жива)':'⚫ ЧЁРНЫЙ (Маньяк — мафии нет!)';cls=mafAlive?'check-red':'check-warn';}
+    else{res=`🔴 КРАСНЫЙ — ${rd.name}`;cls='check-red';}
+    crEl.className='check-result show '+cls;crEl.innerHTML=res;return;
+  }
+  if(id==='don-check-target'&&p){
+    const is=p.role==='sheriff';crEl.className='check-result show '+(is?'check-warn':'check-red');crEl.innerHTML=is?'⭐ ЭТО ШЕРИФ!':'Не Шериф';return;
+  }
+  if(id==='det-action'){
+    if(num!==1&&num!==2){crEl.className='check-result show check-warn';crEl.innerHTML='⚠️ Введите 1 (стрелять) или 2 (проверить)';G.nightActions[id]=0;return;}
+    crEl.className='check-result';crEl.textContent='';
+    const tEl=document.getElementById('det-target');if(tEl&&tEl.value)onNightInput('det-target',tEl.value,'detective');
+    return;
+  }
+  if(id==='det-target'&&p){
+    const act=parseInt(document.getElementById('det-action')?.value)||0;
+    if(act===2){const rd=getRoleDef(p.role);const isB=rd.team==='mafia'||rd.team==='yakuza';crEl.className='check-result show '+(isB?'check-black':'check-red');crEl.innerHTML=isB?`⚫ ЧЁРНЫЙ — ${rd.name}`:`🔴 КРАСНЫЙ — ${rd.name}`;return;}
+    if(act===1){crEl.className='check-result show check-warn';crEl.innerHTML=`🔫 Детектив стреляет в #${num}`;return;}
+    crEl.className='check-result';crEl.textContent='';return;
+  }
+  if(id==='doc-target'){
+    if(G.settings.doctorMode===1&&G.doctorLastTarget===num){crEl.className='check-result show check-warn';crEl.innerHTML='⚠️ Тот же игрок что прошлый раз!';return;}
+    if(G.settings.doctorMode===2){if(G.doctorLastTarget===num){crEl.className='check-result show check-warn';crEl.innerHTML='⚠️ Нельзя — тот же игрок!';return;}const docP=G.players.find(pl=>pl.role==='doctor'&&pl.alive);if(docP&&num===docP.num&&G.doctorSelfUsed){crEl.className='check-result show check-warn';crEl.innerHTML='⚠️ Доктор уже лечил себя!';return;}}
+  }
+  if(id==='beauty-target'){
+    const bN=getPlayerNumByRole('beauty');
+    if(!G.settings.beautySelf&&bN&&num===bN){crEl.className='check-result show check-warn';crEl.innerHTML='⚠️ Красотка не может ходить к себе!';return;}
+    if(!G.settings.beautyRepeat&&G.beautyLastTarget===num){crEl.className='check-result show check-warn';crEl.innerHTML='⚠️ Нельзя — та же цель что прошлой ночью!';return;}
+  }
+  crEl.className='check-result';crEl.textContent='';
+}
+
+function confirmSelfShot(num){
+  G.nightActions['mafia-target']=num;
+  const crEl=document.getElementById('cr-mafia-target');
+  if(crEl){crEl.className='check-result show check-warn';crEl.innerHTML=`⚠️ САМОСТРЕЛ подтверждён — #${num}.`;}
+  addLog('death',`⚠️ САМОСТРЕЛ: мафия стреляет в своего #${num} ${getPlayer(num)?.name||''}`);
+}
+
+function markNoShot(team){
+  const k=team==='mafia'?'mafia-target':'yakuza-target';
+  G.nightActions[k]=-1;// -1 = explicit no-shot
+  const el=document.getElementById(k);if(el)el.value='0';
+  const cr=document.getElementById('cr-'+k);if(cr){cr.className='check-result show check-warn';cr.innerHTML='Несострел зафиксирован';}
+  addLog('night',`⚡ ${team==='mafia'?'Мафия':'Якудза'} — несострел`);
+}
+
+// ===== FINISH NIGHT =====
+function finishNight(){
+  const A=G.nightActions;
+  const alive=G.players.filter(p=>p.alive);
+
+  // Check missing — warn but allow proceed
+  const missing=[];
+  const checks=[
+    {id:'mafia-target',cond:false,label:'Мафия'},
+    {id:'beauty-target',cond:G.activeRoles.beauty&&alive.some(p=>p.role==='beauty'),label:'Красотка'},
+    {id:'yakuza-target',cond:false,label:'Якудза'},
+    {id:'sher-target',cond:alive.some(p=>p.role==='sheriff'),label:'Шериф'},
+    {id:'doc-target',cond:alive.some(p=>p.role==='doctor'),label:'Доктор'},
+    {id:'det-target',cond:alive.some(p=>p.role==='detective'),label:'Детектив'},
+    {id:'judge-target',cond:alive.some(p=>p.role==='judge'),label:'Судья'},
+    {id:'priest-target',cond:alive.some(p=>p.role==='priest'),label:'Священник'},
+    {id:'ripper-target',cond:alive.some(p=>p.role==='ripper'),label:'Потрошитель'},
+    {id:'maniac-target',cond:alive.some(p=>p.role==='maniac'),label:'Маньяк'},
+    {id:'don-check-target',cond:alive.some(p=>p.role==='don'),label:'Дон'},
+  ];
+  checks.forEach(c=>{
+    const v=A[c.id];
+    // -1 = explicit no-shot, 0 = not filled (warn), but for mafia 0 is treated as no-shot (warn only)
+    if(c.cond&&(v===undefined||v===null||v===0)&&v!==-1)missing.push(c.label);
+  });
+  // Remove mafia/yakuza from missing if they will be treated as no-shot (value 0 = no-shot)
+  // missing already includes them — we show warn but proceed
+  if(missing.length>0){
+    if(!confirm(`⚠️ Не заполнены роли: ${missing.join(', ')}.\nПродолжить всё равно?`))return;
+  }
+
+  const beautyTarget=A['beauty-target']||0;
+  const docTarget=A['doc-target']||0;
+  const mafiaTarget=A['mafia-target']!==undefined?A['mafia-target']:0;// -1 = explicit no-shot, 0 = not set
+  const yakuzaTarget=A['yakuza-target']||0;
+  const detAction=A['det-action']||0,detTarget=A['det-target']||0;
+  const sherTarget=A['sher-target']||0;
+  const maniacTarget=A['maniac-target']||0;
+  const ripperTarget=A['ripper-target']||0;
+  const judgeTarget=A['judge-target']||0;
+  const priestTarget=A['priest-target']||0;
+  const donCheck=A['don-check-target']||0;
+
+  const killed=new Set(),saved=new Set();
+  const announceResults=[];// публично
+  const privateResults=[];// только ведущий
+
+  // Check beauty validity
+  let beautyValid=false,beautyNum=getPlayerNumByRole('beauty');
+  if(beautyTarget>0){
+    const ok=!(!G.settings.beautySelf&&beautyNum&&beautyTarget===beautyNum)&&!(!G.settings.beautyRepeat&&G.beautyLastTarget===beautyTarget);
+    if(ok){beautyValid=true;G.beautyLastTarget=beautyTarget;const bp=getPlayer(beautyTarget);if(bp&&bp.alive)bp.actions.push(`Ночь ${G.nightNum}: Красотка пришла`);}
+  }
+
+  // Doctor
+  if(docTarget>0){
+    let ok=true;
+    if(G.settings.doctorMode===1&&G.doctorLastTarget===docTarget)ok=false;
+    if(G.settings.doctorMode===2){if(G.doctorLastTarget===docTarget)ok=false;const dp=alive.find(p=>p.role==='doctor');if(dp&&docTarget===dp.num&&G.doctorSelfUsed)ok=false;}
+    if(ok){saved.add(docTarget);G.doctorLastTarget=docTarget;const dp=alive.find(p=>p.role==='doctor');if(dp&&docTarget===dp.num)G.doctorSelfUsed=true;getPlayer(docTarget)?.actions.push(`Ночь ${G.nightNum}: Доктор защитил`);addLog('info',`💊 Доктор → #${docTarget}`);}
+  }
+
+  // Judge
+  if(judgeTarget>0){const jp=getPlayer(judgeTarget);if(jp&&jp.alive){jp.immune=true;jp.actions.push(`Ночь ${G.nightNum}: иммунитет`);privateResults.push({icon:'⚖️',text:`Судья → иммунитет <strong>#${judgeTarget} ${jp.name}</strong>`});addLog('info',`⚖️ Судья → #${judgeTarget}`);}}
+
+  // Shot processor — handles beauty/doctor interactions
+  const processShot=(targetNum,shooterLabel)=>{
+    if(!targetNum||targetNum<0)return;
+    const tp=getPlayer(targetNum);
+    if(!tp||!tp.alive){announceResults.push({icon:'💨',text:`${shooterLabel} стрелял в #${targetNum} — уже мёртв.`});return;}
+    // Doctor saves
+    if(saved.has(targetNum)){announceResults.push({icon:'💊',text:`${shooterLabel} стрелял — никто не погиб (Доктор спас).`});return;}
+
+    // Is beauty alive? Check if we shoot at beauty herself
+    const beautyP=G.players.find(p=>p.role==='beauty'&&p.alive);
+
+    // Shooting at beauty's PROTECTED target — but only if beauty is still alive and NOT killed this night
+    if(beautyValid&&beautyTarget===targetNum){
+      if(beautyP&&!killed.has(beautyP.num)){
+        // Beauty alive + target is her visited player → player survives, silenced
+        const p=getPlayer(targetNum);if(p)p.silent=true;
+        announceResults.push({icon:'💋',text:`${shooterLabel} стрелял в <strong>#${targetNum} ${tp.name}</strong> — к нему ходила Красотка. Жив, но молчит весь день.`});
+        addLog('info',`💋 Красотка спасла #${targetNum} ${tp.name}`);
+        return;
+      } else {
+        // Beauty is dead this night — her visit doesn't protect
+        killed.add(targetNum);
+        announceResults.push({icon:'💀',text:`${shooterLabel} убивает <strong>#${targetNum} ${tp.name}</strong>. Красотка ходила к нему, но была убита и не смогла защитить.`});
+        return;
+      }
+    }
+
+    // Shooting at beauty herself
+    if(beautyP&&targetNum===beautyP.num){
+      killed.add(beautyP.num);
+      if(beautyValid&&beautyTarget>0){
+        // Beauty's visit target also dies
+        const bt=getPlayer(beautyTarget);
+        if(bt&&bt.alive){
+          killed.add(beautyTarget);
+          announceResults.push({icon:'💥',text:`${shooterLabel} застрелил Красотку (#${beautyP.num} ${beautyP.name}) — и игрок #${beautyTarget} ${bt.name} (куда она ходила) тоже погибает.`});
+        } else {
+          announceResults.push({icon:'💀',text:`${shooterLabel} застрелил Красотку (#${beautyP.num} ${beautyP.name}).`});
+        }
+      } else {
+        announceResults.push({icon:'💀',text:`${shooterLabel} застрелил Красотку (#${beautyP.num} ${beautyP.name}).`});
+      }
+      return;
+    }
+
+    // If beauty was shot (not at her target, not at her) — beauty is dead, her visit doesn't protect
+    // Check: was beautyValid but target died (beauty dead = her protection gone)
+    // beautyValid=false already handles this since beauty dead → no beautyNum
+
+    killed.add(targetNum);
+    announceResults.push({icon:'💀',text:`${shooterLabel} убивает <strong>#${targetNum} ${tp.name}</strong> (${getRoleDef(tp.role).name}).`});
+  };
+
+  if(mafiaTarget>0){addLog('night',`🔫 Мафия → #${mafiaTarget}`);processShot(mafiaTarget,'🔫 Мафия');}
+  else{addLog('night','💨 Мафия — несострел');announceResults.push({icon:'💨',text:'Мафия — несострел.'});}
+
+  if(yakuzaTarget>0&&G.activeRoles.yakuza){addLog('night',`⚔️ Якудза → #${yakuzaTarget}`);processShot(yakuzaTarget,'⚔️ Якудза');}
+  else if(G.activeRoles.yakuza&&alive.some(p=>p.role==='yakuza')){addLog('night','💨 Якудза — несострел');announceResults.push({icon:'💨',text:'Якудза — несострел.'});}
+
+  if(maniacTarget>0&&alive.some(p=>p.role==='maniac')){
+    const ma=alive.find(p=>p.role==='maniac');
+    if(ma){
+      addLog('night',`🔪 Маньяк → #${maniacTarget}`);
+      // If beauty was shot by someone and killed, beautyValid=false, so maniac shot at her ex-target is just a normal shot
+      processShot(maniacTarget,'🔪 Маньяк');
+    }
+  }
+
+  // Ripper
+  if(ripperTarget>0&&alive.some(p=>p.role==='ripper')){
+    const rp=alive.find(p=>p.role==='ripper');
+    if(rp){
+      addLog('night',`🗡️ Потрошитель → #${ripperTarget}`);
+      const tp=getPlayer(ripperTarget);
+      if(tp&&tp.alive){
+        if(saved.has(ripperTarget)){announceResults.push({icon:'💊',text:`Потрошитель → #${ripperTarget}, Доктор спас.`});}
+        else if(beautyValid&&beautyTarget===ripperTarget){
+          const beautyStillLive=G.players.find(p=>p.role==='beauty'&&p.alive)&&!killed.has(beautyNum);
+          if(beautyStillLive){
+            const pp=getPlayer(ripperTarget);if(pp)pp.silent=true;
+            announceResults.push({icon:'💋',text:`Потрошитель → #${ripperTarget} (красотка). Жив, молчит.`});
+          } else {
+            // Beauty killed this night — no protection
+            const trd2=getRoleDef(getPlayer(ripperTarget)?.role||'civilian');
+            const isActive2=trd2.shoots||['sheriff','judge','priest','beauty','doctor','detective','ripper'].includes(getPlayer(ripperTarget)?.role);
+            if(isActive2){killed.add(ripperTarget);announceResults.push({icon:'🗡️',text:`Потрошитель убил #${ripperTarget}. Красотка ходила, но была убита — не защитила.`});}
+            else{if(G.settings.ripperMode===0){killed.add(rp.num);announceResults.push({icon:'🗡️',text:`Потрошитель → обыватель, умирает сам.`});}
+            else{announceResults.push({icon:'🗡️',text:`Потрошитель → обыватель. Без последствий.`});}}
+          }
+        } else {
+          const trd=getRoleDef(tp.role);
+          const isActive=trd.shoots||['sheriff','judge','priest','beauty','doctor','detective','ripper'].includes(tp.role);
+          if(isActive){killed.add(ripperTarget);announceResults.push({icon:'🗡️',text:`Потрошитель убил активную роль <strong>#${ripperTarget} ${tp.name}</strong> (${trd.name}).`});}
+          else{if(G.settings.ripperMode===0){killed.add(rp.num);announceResults.push({icon:'🗡️',text:`Потрошитель пошёл к обывателю — умирает сам (#${rp.num} ${rp.name}).`});}
+          else{announceResults.push({icon:'🗡️',text:`Потрошитель → обыватель #${ripperTarget}. Без последствий.`});}}
+        }
+      }
+    }
+  }
+
+  // Detective
+  if(detTarget>0&&alive.some(p=>p.role==='detective')){
+    const da=alive.find(p=>p.role==='detective');
+    if(da){
+      if(detAction===1){
+        addLog('night',`🔍 Детектив стреляет → #${detTarget}`);
+        const tp=getPlayer(detTarget);
+        if(tp){
+          if(saved.has(detTarget)){announceResults.push({icon:'💊',text:`Детектив → #${detTarget}, Доктор спас.`});}
+          else if(beautyValid&&beautyTarget===detTarget){
+            const bpd=G.players.find(p=>p.role==='beauty'&&p.alive)&&!killed.has(beautyNum);
+            if(bpd){const pp=getPlayer(detTarget);if(pp)pp.silent=true;announceResults.push({icon:'💋',text:`Детектив → #${detTarget} (красотка). Жив, молчит.`});}
+            else{killed.add(detTarget);announceResults.push({icon:'💀',text:`Детектив застрелил #${detTarget}. Красотка ходила, но убита — не защитила.`});const isRed=getRoleDef(getPlayer(detTarget)?.role||'civilian').team==='town';if(G.settings.detDiesAny||isRed){killed.add(da.num);announceResults.push({icon:'💀',text:`Детектив (#${da.num}) погибает.`});}}
+          }
+          else{
+            killed.add(detTarget);
+            announceResults.push({icon:'💀',text:`Детектив застрелил <strong>#${detTarget} ${tp.name}</strong> (${getRoleDef(tp.role).name}).`});
+            const isRed=getRoleDef(tp.role).team==='town';
+            if(G.settings.detDiesAny||isRed){killed.add(da.num);announceResults.push({icon:'💀',text:`Детектив (#${da.num} ${da.name}) погибает — застрелил ${G.settings.detDiesAny?'кого-либо':'красного'}.`});}
+          }
+        }
+      } else if(detAction===2){
+        addLog('night',`🔍 Детектив проверяет → #${detTarget}`);
+        const tp=getPlayer(detTarget);
+        if(tp){const rd=getRoleDef(tp.role);const isB=rd.team==='mafia'||rd.team==='yakuza';privateResults.push({icon:'🔍',text:`Детектив: <strong>#${detTarget} ${tp.name}</strong> — ${isB?'⚫ ЧЁРНЫЙ':'🔴 КРАСНЫЙ'} (${rd.name})`});da.actions.push(`Ночь ${G.nightNum}: #${detTarget} → ${isB?'чёрный':'красный'}`);}
+      }
+    }
+  }
+
+  // Sheriff
+  if(sherTarget>0&&alive.some(p=>p.role==='sheriff')){
+    const sa=alive.find(p=>p.role==='sheriff');
+    if(sa){
+      addLog('night',`🔰 Шериф → #${sherTarget}`);
+      const tp=getPlayer(sherTarget);
+      if(tp){
+        const rd=getRoleDef(tp.role);const mafAlive=alive.some(p=>p.role==='mafia'||p.role==='don');
+        let res,cls;
+        if(rd.team==='mafia'||rd.team==='yakuza'){res=`⚫ ЧЁРНЫЙ — ${rd.name}`;cls='check-black';}
+        else if(tp.role==='maniac'){if(mafAlive){res='🔴 КРАСНЫЙ (Маньяк — мафия жива)';cls='check-red';}else{res='⚫ ЧЁРНЫЙ (Маньяк — мафии нет!)';cls='check-warn';privateResults.push({icon:'⚠️',text:'Мафия мертва! Маньяк теперь ЧЁРНЫЙ.'});}}
+        else{res=`🔴 КРАСНЫЙ — ${rd.name}`;cls='check-red';}
+        privateResults.push({icon:'🔰',text:`Шериф → <strong>#${sherTarget} ${tp.name}</strong>: <strong>${res}</strong>`});
+        sa.actions.push(`Ночь ${G.nightNum}: #${sherTarget} → ${res}`);
+      }
+    }
+  }
+
+  // Don check
+  if(donCheck>0&&alive.some(p=>p.role==='don')){
+    const da=alive.find(p=>p.role==='don');
+    if(da){
+      addLog('night',`🎩 Дон → #${donCheck}`);
+      const tp=getPlayer(donCheck);
+      if(tp){const is=tp.role==='sheriff';privateResults.push({icon:'🎩',text:`Дон → <strong>#${donCheck} ${tp.name}</strong>: ${is?'<strong>⭐ ШЕРИФ!</strong>':'не Шериф'}`});da.actions.push(`Ночь ${G.nightNum}: #${donCheck} → ${is?'Шериф':'не Шериф'}`);}
+    }
+  }
+
+  // Priest
+  if(priestTarget>0&&alive.some(p=>p.role==='priest')){
+    const pa=alive.find(p=>p.role==='priest');
+    if(pa){
+      addLog('night',`✝️ Священник → #${priestTarget}`);
+      const tp=getPlayer(priestTarget);
+      if(tp&&tp.role==='maniac'){killed.add(pa.num);privateResults.push({icon:'✝️',text:`Священник нашёл Маньяка (#${priestTarget}) — Священник (#${pa.num} ${pa.name}) погибает. Объявить утром.`});}
+      else{privateResults.push({icon:'✝️',text:`Священник → #${priestTarget} — не маньяк.`});}
+    }
+  }
+
+  // Apply kills
+  killed.forEach(num=>{const p=getPlayer(num);if(p&&p.alive){p.alive=false;addLog('death',`💀 #${p.num} ${p.name} (${getRoleDef(p.role).name}) убит ночью`);}});
+
+  // Apply silent — ONLY from beauty this night
+  // (already applied inline above)
+
+  updateStats();renderPlayerList();
+
+  // All roles summary
+  const roleSummary=[];
+  const rmap=[
+    {k:'beauty',label:'💋 Красотка',val:beautyTarget>0?`Пришла к #${beautyTarget} ${getPlayer(beautyTarget)?.name||''}`:'Нет действия'},
+    {k:'mafia',label:'🔫 Мафия',val:mafiaTarget>0?`Стреляла в #${mafiaTarget} ${getPlayer(mafiaTarget)?.name||''}`:mafiaTarget===-1?'Несострел':'Нет выстрела',always:true},
+    {k:'don-check',label:'🎩 Дон (проверка)',val:donCheck>0?`Проверил #${donCheck} ${getPlayer(donCheck)?.name||''}`:'Нет действия',key:'don'},
+    {k:'yakuza',label:'⚔️ Якудза',val:yakuzaTarget>0?`Стреляла в #${yakuzaTarget}`:yakuzaTarget===-1?'Несострел':'Нет выстрела'},
+    {k:'detective',label:'🔍 Детектив',val:detTarget>0?(detAction===1?`Стрелял в #${detTarget}`:`Проверял #${detTarget}`):'Нет действия'},
+    {k:'sheriff',label:'🔰 Шериф',val:sherTarget>0?`Проверял #${sherTarget} ${getPlayer(sherTarget)?.name||''}`:'Нет действия'},
+    {k:'doctor',label:'💊 Доктор',val:docTarget>0?`Защищал #${docTarget} ${getPlayer(docTarget)?.name||''}`:'Нет действия'},
+    {k:'judge',label:'⚖️ Судья',val:judgeTarget>0?`Иммунитет #${judgeTarget}`:'Нет действия'},
+    {k:'priest',label:'✝️ Священник',val:priestTarget>0?`Искал #${priestTarget}`:'Нет действия'},
+    {k:'ripper',label:'🗡️ Потрошитель',val:ripperTarget>0?`Пошёл к #${ripperTarget}`:'Нет действия'},
+    {k:'maniac',label:'🔪 Маньяк',val:maniacTarget>0?`Стрелял в #${maniacTarget}`:'Нет действия'},
+  ];
+  rmap.forEach(r=>{
+    const ak=r.key||r.k;
+    const on=true;// use actual players
+    const has=ak==='don'?G.players.some(p=>p.role==='don'):ak==='mafia'?G.players.some(p=>p.role==='mafia'||p.role==='don'):G.players.some(p=>p.role===ak);
+    if(on&&has)roleSummary.push(r);
+  });
+
+  G.nightResults={announceResults,privateResults,roleSummary,nightNum:G.nightNum};
+  addLog('night',`Итоги ночи ${G.nightNum}: убито ${killed.size}`);
+
+  // Silent counter = only this night's beauty targets (not cumulative)
+  updateStats();
+
+  let html=`<div class="nri-section">📢 Объявить игрокам утром</div>`;
+  if(announceResults.length)announceResults.forEach(r=>html+=`<div class="nri"><div class="nri-icon">${r.icon}</div><div class="nri-text">${r.text}</div></div>`);
+  else html+=`<div class="nri"><div class="nri-icon">🌙</div><div class="nri-text">Тихая ночь.</div></div>`;
+  html+=`<div class="nri-section">🔒 Только ведущий</div>`;
+  if(privateResults.length)privateResults.forEach(r=>html+=`<div class="nri"><div class="nri-icon">${r.icon}</div><div class="nri-text">${r.text}</div></div>`);
+  else html+=`<div class="text-muted" style="font-size:12px;padding:4px 0;">Нет скрытых событий.</div>`;
+  html+=`<div class="nri-section">📋 Все роли за ночь</div>`;
+  roleSummary.forEach(r=>html+=`<div class="nri"><div class="nri-text"><strong>${r.label}:</strong> ${r.val}</div></div>`);
+
+  document.getElementById('night-results-modal').innerHTML=html;
+  openModal('modal-night-results');
+  saveState();
+}
+
+function returnToNightEdit(){G.phase='night';document.getElementById('game-phase-title').textContent=`Ночь ${G.nightNum}`;switchGameTab('night');}
+
+// ===== DAY =====
+function goDay(){
+  G.dayNum++;G.phase='day';
+  document.getElementById('game-phase-title').textContent=`День ${G.dayNum}`;
+  document.getElementById('game-phase-sub').textContent='Обсуждение — голосование';
+  addLog('day',`☀️ === ДЕНЬ ${G.dayNum} ===`);
+  buildDaySummary();buildVoteGrid();
+  switchGameTab('day');updateStats();renderPlayerList();saveState();
+  // Stop night music when day starts
+  if(G.settings.nightMusicAuto&&(musicPlaying||musicPaused))stopMusic();
+}
+
+function buildDaySummary(){
+  const el=document.getElementById('night-summary-day');if(!el)return;
+  if(!G.nightResults){el.innerHTML='';return;}
+  let h=`<div class="card"><div class="card-title">📢 Объявить игрокам — итоги ночи ${G.nightResults.nightNum}</div>`;
+  if(G.nightResults.announceResults.length)G.nightResults.announceResults.forEach(r=>h+=`<div class="nri"><div class="nri-icon">${r.icon}</div><div class="nri-text">${r.text}</div></div>`);
+  else h+=`<div class="text-muted">Тихая ночь.</div>`;
+  // Show judge immunity info
+  const immunePlayers=G.players.filter(p=>p.alive&&p.immune);
+  if(immunePlayers.length){
+    h+=`<div class="alert-box alert-warn" style="margin-top:8px;">⚖️ Иммунитет Судьи: ${immunePlayers.map(p=>`<strong>#${p.num} ${p.name}</strong>`).join(', ')} — нельзя выголосовать сегодня.</div>`;
+  }
+  h+=`</div>`;el.innerHTML=h;
+}
+
+function buildVoteGrid(){
+  const alive=G.players.filter(p=>p.alive);
+  const gg=document.getElementById('vote-grid');
+  if(gg)gg.innerHTML=alive.map(p=>`<div class="vote-cell${p.nominated?' nominated':''}${p.immune?' immune-cell':''}" id="vcell-${p.num}" onclick="toggleNom(${p.num})" title="${p.immune?'Иммунитет Судьи!':''}"><div>#${p.num}${p.immune?' ⚖️':''}</div><div style="font-size:9px;overflow:hidden;white-space:nowrap;max-width:100%;text-overflow:ellipsis;">${p.name.length>6?p.name.slice(0,5)+'…':p.name}</div></div>`).join('');
+  buildVoteOutGrid();
+  updateNomList();
+}
+
+function buildVoteOutGrid(){
+  const nominated=(G.nominationOrder||[]).map(n=>getPlayer(n)).filter(p=>p&&p.nominated&&p.alive);
+  const og=document.getElementById('vote-out-grid');
+  if(og)og.innerHTML=nominated.map(p=>`<div class="vote-cell${p.voteOut?' voted-out':''}" id="vocell-${p.num}" onclick="toggleVoteOut(${p.num})"><div>#${p.num}</div><div style="font-size:9px;overflow:hidden;white-space:nowrap;max-width:100%;text-overflow:ellipsis;">${p.name.length>6?p.name.slice(0,5)+'…':p.name}</div></div>`).join('');
+  updateVoteOutList();
+}
+
+function toggleNom(num){
+  const p=getPlayer(num);if(!p||!p.alive)return;
+  p.nominated=!p.nominated;
+  if(p.nominated){if(!G.nominationOrder.includes(num))G.nominationOrder.push(num);}
+  else{G.nominationOrder=G.nominationOrder.filter(n=>n!==num);p.voteOut=false;G.voteOutOrder=G.voteOutOrder.filter(n=>n!==num);}
+  const c=document.getElementById('vcell-'+num);if(c)c.classList.toggle('nominated',p.nominated);
+  buildVoteOutGrid();updateNomList();
+}
+
+function toggleVoteOut(num){
+  const p=getPlayer(num);if(!p||!p.alive||!p.nominated)return;
+  p.voteOut=!p.voteOut;
+  if(p.voteOut){if(!G.voteOutOrder.includes(num))G.voteOutOrder.push(num);}
+  else{G.voteOutOrder=G.voteOutOrder.filter(n=>n!==num);}
+  const c=document.getElementById('vocell-'+num);if(c)c.classList.toggle('voted-out',p.voteOut);
+  updateVoteOutList();
+}
+
+function updateNomList(){
+  const el=document.getElementById('nominated-list');if(!el)return;
+  const ordered=(G.nominationOrder||[]).map(n=>getPlayer(n)).filter(p=>p&&p.nominated&&p.alive);
+  el.innerHTML=ordered.length?'Выставлены: '+ordered.map(p=>`<strong>#${p.num}</strong>`).join(', '):'Никто не выставлен';
+}
+
+function updateVoteOutList(){
+  const el=document.getElementById('vote-out-list');if(!el)return;
+  const ordered=(G.voteOutOrder||[]).map(n=>getPlayer(n)).filter(p=>p&&p.voteOut);
+  el.innerHTML=ordered.length?'Выголосовать: '+ordered.map(p=>`<strong>#${p.num}</strong>`).join(', '):'Не выбраны';
+}
+
+function voteNominated(){
+  const toVote=(G.voteOutOrder||[]).map(n=>getPlayer(n)).filter(p=>p&&p.voteOut&&p.alive);
+  if(!toVote.length){showWarn('Не выбраны игроки для выголосования (отметьте в нижней сетке).');return;}
+  toVote.forEach(p=>{
+    if(p.immune){showToast(`⚖️ #${p.num} ${p.name} — иммунитет Судьи! Нельзя выголосовать.`);p.voteOut=false;p.nominated=false;addLog('day',`⚖️ #${p.num} ${p.name} защищён Судьёй — выголосование отменено`);return;}
+    p.alive=false;p.voted=true;p.nominated=false;p.voteOut=false;
+    addLog('day',`🗳 #${p.num} ${p.name} (${getRoleDef(p.role).name}) выголосован`);
+  });
+  G.nominationOrder=G.nominationOrder.filter(n=>getPlayer(n)?.alive);
+  G.voteOutOrder=[];
+  updateStats();renderPlayerList();buildVoteGrid();saveState();
+}
+
+// ===== DAY TIMERS =====
+let dayTimers={1:{secs:60,base:60,running:false,interval:null},2:{secs:30,base:30,running:false,interval:null}};
+function setDayTimerPreset(n,s){
+  const t=dayTimers[n];clearInterval(t.interval);t.running=false;t.secs=s;t.base=s;
+  updateDayTimerDisp(n,s);document.getElementById(`day-t${n}-btn`).textContent=n===1?'▶ Речь':'▶ Оправд.';
+}
+function updateDayTimerDisp(n,s){const el=document.getElementById(`day-t${n}-disp`);if(el){const m=Math.floor(s/60),sc=s%60;el.textContent=`${m}:${sc.toString().padStart(2,'0')}`;el.classList.toggle('warning',s<=5);}}
+function startDayTimer(n){
+  const t=dayTimers[n];clearInterval(t.interval);
+  t.secs=t.base;updateDayTimerDisp(n,t.secs);
+  t.running=true;document.getElementById(`day-t${n}-btn`).textContent='⏸ Стоп';
+  t.interval=setInterval(()=>{t.secs--;updateDayTimerDisp(n,t.secs);if(t.secs<=0){clearInterval(t.interval);t.running=false;document.getElementById(`day-t${n}-btn`).textContent=n===1?'▶ Речь':'▶ Оправд.';playAlarmRepeated();}},1000);
+}
+
+// ===== WIN CHECK =====
+function checkWin(){
+  const alive=G.players.filter(p=>p.alive);
+  const maf=alive.filter(p=>['mafia','don'].includes(p.role));
+  const yak=alive.filter(p=>p.role==='yakuza');
+  const man=alive.filter(p=>p.role==='maniac');
+  const town=alive.filter(p=>getRoleDef(p.role).team==='town');
+  let w=null;
+  if(!maf.length&&!yak.length&&!man.length)w='town';
+  else if(maf.length&&maf.length>=town.length+yak.length+man.length)w='mafia';
+  else if(yak.length&&!maf.length&&yak.length>=town.length+man.length)w='yakuza';
+  else if(man.length===1&&alive.length===2){const o=alive.find(p=>p.role!=='maniac');if(o&&!getRoleDef(o.role).shoots)w='maniac';}
+  if(w){
+    const wd={town:{icon:'🏛️',title:'Мирный город победил!',sub:'Все угрозы устранены.'},mafia:{icon:'🔫',title:'Мафия победила!',sub:'Город под контролем.'},yakuza:{icon:'⚔️',title:'Якудза победила!',sub:'Японский клан захватил власть.'},maniac:{icon:'🔪',title:'Маньяк победил!',sub:'Последний выживший.'}}[w];
+    document.getElementById('win-icon').textContent=wd.icon;document.getElementById('win-title').textContent=wd.title;document.getElementById('win-sub').textContent=wd.sub;
+    addLog('info',`🏆 ${wd.title}`);saveToHistory();localStorage.removeItem(SAVE_KEY);showScreen('screen-win');
+  } else showWarn('Игра продолжается — победителя нет.');
+}
+function endGame(){if(confirm('Завершить игру?')){saveToHistory();localStorage.removeItem(SAVE_KEY);showScreen('screen-menu');checkHistoryBtn();}}
+
+// ===== LOG =====
+function addLog(type,msg){
+  const now=new Date();const t=`${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
+  G.log.push({type,msg,time:t});
+  const el=document.getElementById('game-log');
+  if(el)el.innerHTML=G.log.slice().reverse().map(e=>`<div class="log-entry ${e.type}"><div class="log-time">${e.time}</div>${e.msg}</div>`).join('');
+}
+function clearLog(){G.log=[];document.getElementById('game-log').innerHTML='';}
+function exportReport(){
+  const lines=[`МАФИЯ — ОТЧЁТ`,`Дата: ${new Date().toLocaleString('ru')}`,`Игроков: ${G.players.length} | Ночей: ${G.nightNum}`,``,`=== РОЛИ ===`];
+  G.players.forEach(p=>{const rd=getRoleDef(p.role);lines.push(`#${p.num} ${p.name} — ${rd.name} (${p.alive?'жив':p.voted?'выгол.':'убит'})`)});
+  lines.push('','=== ЖУРНАЛ ===');G.log.forEach(e=>lines.push(`[${e.time}] ${e.msg}`));
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([lines.join('\n')],{type:'text/plain;charset=utf-8'}));a.download=`mafia_${Date.now()}.txt`;a.click();
+}
+
+// ===== JOIN =====
+function toggleJoinPw(){const inp=document.getElementById('join-password');inp.type=inp.type==='password'?'text':'password';}
+function joinGame(){
+  const pw=document.getElementById('join-password').value.trim();
+  const num=parseInt(document.getElementById('join-num').value)||0;
+  const name=document.getElementById('join-name').value.trim();
+  if(!name||!num){showWarn('Введите номер и имя.');return;}
+  if(G.password&&pw!==G.password){showWarn('Неверный пароль!');return;}
+  if(!G.players.length){showWarn('Ведущий ещё не раздал роли. Подождите.');return;}
+  const p=G.players.find(p=>p.num===num);if(!p){showWarn(`Игрок #${num} не найден. Проверьте номер.`);return;}
+  p.name=name;savePlayerNames();
+  renderPlayerList();updateStats();
+  const rd=getRoleDef(p.role);
+  document.getElementById('rr-icon').textContent=rd.icon;
+  document.getElementById('rr-name').textContent=rd.name;
+  document.getElementById('rr-team').textContent={mafia:'⚫ Команда: Мафия',yakuza:'🟣 Команда: Якудза',neutral:'🟡 Нейтральный',town:'🔴 Команда: Мирный город'}[rd.team]||'';
+  document.getElementById('rr-desc').textContent=rd.desc||'';
+  // Show player number and name
+  const rrPlayer=document.getElementById('rr-player-info');
+  if(rrPlayer)rrPlayer.textContent=`Игрок #${p.num} — ${p.name}`;
+  showScreen('screen-role-reveal');
+}
+
+// ===== TIMER =====
+let timerInterval=null,timerSecs=180,timerRunning=false,alarmType=0;
+function setTimer(s){timerSecs=s;updateTimerDisp(s);document.querySelectorAll('.timer-preset').forEach(el=>el.classList.remove('active-preset'));const idx={60:0,120:1,180:2,300:3}[s];if(idx!=null)document.querySelectorAll('#screen-timer .timer-preset')[idx].classList.add('active-preset');}
+function updateTimerDisp(s){const el=document.getElementById('timer-display');if(el){const m=Math.floor(s/60),sc=s%60;el.textContent=`${m}:${sc.toString().padStart(2,'0')}`;el.classList.toggle('warning',s<=10);}}
+function startTimer(){if(timerRunning){clearInterval(timerInterval);timerRunning=false;document.getElementById('timer-start-btn').textContent='▶ Старт';return;}timerRunning=true;document.getElementById('timer-start-btn').textContent='⏸ Пауза';timerInterval=setInterval(()=>{timerSecs--;updateTimerDisp(timerSecs);if(timerSecs<=0){clearInterval(timerInterval);timerRunning=false;document.getElementById('timer-start-btn').textContent='▶ Старт';playAlarmRepeated();}},1000);}
+function resetTimer(){clearInterval(timerInterval);timerRunning=false;document.getElementById('timer-start-btn').textContent='▶ Старт';setTimer(timerSecs);}
+
+// ===== MUSIC =====
+let musicPlaying=false,musicGain=null,audioCtx=null,musicTrack=0,customAudio=null;
+function getAudioCtx(){if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)();return audioCtx;}
+
+let musicPaused=false;
+function toggleMusic(){
+  const hbtn=document.getElementById('hdr-music-btn'),mbtn=document.getElementById('music-btn');
+  if(musicPlaying){
+    // Pause
+    if(customAudio){try{customAudio.pause();}catch(e){}}
+    else{try{if(musicGain)musicGain.gain.value=0;}catch(e){}}
+    musicPlaying=false;musicPaused=true;
+    if(mbtn)mbtn.textContent='▶ Продолжить';
+    if(hbtn){hbtn.textContent='⏸';hbtn.style.color='var(--text2)';}
+  } else if(musicPaused){
+    // Resume from pause
+    if(customAudio){try{customAudio.play().catch(()=>{});}catch(e){}}
+    else{try{if(musicGain)musicGain.gain.value=(G.settings.musicVolume||20)/500;}catch(e){}}
+    musicPlaying=true;musicPaused=false;
+    if(mbtn)mbtn.textContent='⏸ Пауза';
+    if(hbtn){hbtn.textContent='🎵';hbtn.style.color='var(--accent)';}
+  } else {
+    // Start fresh
+    if(customAudio&&musicTrack===99){try{customAudio.play().catch(()=>{});}catch(e){}}
+    else{try{playAmbient();}catch(e){}}
+    musicPlaying=true;musicPaused=false;
+    if(mbtn)mbtn.textContent='⏸ Пауза';
+    if(hbtn){hbtn.textContent='🎵';hbtn.style.color='var(--accent)';}
+  }
+}
+function stopMusic(){
+  if(customAudio){try{customAudio.pause();customAudio.currentTime=0;}catch(e){}}
+  else{try{if(musicGain){musicGain.disconnect();musicGain=null;}}catch(e){}}
+  musicPlaying=false;musicPaused=false;
+  const hbtn=document.getElementById('hdr-music-btn'),mbtn=document.getElementById('music-btn');
+  if(mbtn)mbtn.textContent='▶ Включить';
+  if(hbtn){hbtn.textContent='♪';hbtn.style.color='';}
+}
+
+function setMusicVolume(v){
+  const vol=parseInt(v);G.settings.musicVolume=vol;
+  const lbl=document.getElementById('vol-label');if(lbl)lbl.textContent=vol;
+  if(musicGain)musicGain.gain.value=vol/500;
+  if(customAudio)customAudio.volume=vol/100;
+}
+function selectTrack(i){
+  musicTrack=i;
+  [0,1,2].forEach(j=>{const el=document.getElementById('trk-'+j);if(el)el.className=j===i?'btn btn-primary btn-sm':'btn btn-secondary btn-sm';});
+  if(musicPlaying&&musicTrack!==99){try{musicGain?.disconnect();}catch(e){}playAmbient();}
+}
+function nextTrack(){
+  if(musicPlaying){if(customAudio){try{customAudio.pause();}catch(e){}}else{try{if(musicGain)musicGain.disconnect();}catch(e){}}}
+  if(musicTrack===99){musicTrack=0;}else musicTrack=(musicTrack+1)%3;
+  selectTrack(musicTrack);
+}
+
+let _oscillators=[];
+function playAmbient(){
+  const ctx=getAudioCtx();
+  if(musicGain){try{_oscillators.forEach(o=>{try{o.stop();}catch(e){}});musicGain.disconnect();}catch(e){}}
+  _oscillators=[];
+  const freqs=[[55,110,165],[73,110,147],[65,98,130]][musicTrack%3];
+  musicGain=ctx.createGain();musicGain.gain.value=(G.settings.musicVolume||20)/500;musicGain.connect(ctx.destination);
+  freqs.forEach(f=>{const o=ctx.createOscillator();o.type='sine';o.frequency.value=f;o.connect(musicGain);o.start();_oscillators.push(o);});
+}
+
+function setMusicMode(mode){
+  G.settings.musicMode=mode;
+  G.settings.nightMusicAuto=(mode==='auto');
+  const mmAuto=document.getElementById('mmode-auto'),mmMan=document.getElementById('mmode-manual');
+  if(mmAuto)mmAuto.className=mode==='auto'?'btn btn-primary btn-sm':'btn btn-secondary btn-sm';
+  if(mmMan)mmMan.className=mode==='manual'?'btn btn-primary btn-sm':'btn btn-secondary btn-sm';
+  const desc=document.getElementById('mmode-desc');
+  if(desc)desc.textContent=mode==='auto'?'Авто: вкл при ночи, выкл при дне. Кнопка ♪ — пауза/продолжить.':'Вручную: кнопка ♪ вкл/выкл музыку.';
+}
+function pickMusicFile(){document.getElementById('music-file-input').click();}
+function loadMusicFile(input){
+  const file=input.files[0];if(!file)return;
+  // Stop current music first
+  if(musicPlaying)toggleMusic();
+  if(customAudio){try{customAudio.pause();customAudio.src='';}catch(e){}}
+  customAudio=new Audio();
+  customAudio.src=URL.createObjectURL(file);
+  customAudio.loop=true;
+  customAudio.volume=(G.settings.musicVolume||20)/100;
+  musicTrack=99;
+  // Update track button UI
+  [0,1,2].forEach(j=>{const el=document.getElementById('trk-'+j);if(el)el.className='btn btn-secondary btn-sm';});
+  const nm=document.getElementById('custom-track-name');if(nm)nm.textContent=`📁 ${file.name}`;
+  showToast(`Загружено: ${file.name}. Нажмите ♪ для воспроизведения.`);
+  // Don't autoplay — user controls with header button or nightMusicAuto
+}
+
+// ===== ALARM =====
+function testAlarm(t){alarmType=t;playAlarmRepeated();}
+function playAlarmRepeated(){const rep=G.settings.alarmRepeats||3;let i=0;const f=()=>{playAlarm(alarmType);i++;if(i<rep)setTimeout(f,1400);};f();}
+function playAlarm(type){try{const ctx=getAudioCtx();const seqs=[[880,.1,0,.1,880,.1,0,.1,880,.3],[220,.3,110,.3,165,.5],[523,.1,659,.1,784,.1,1047,.4],[440,.05,0,.05,440,.05,0,.05,440,.3]];const seq=seqs[type]||seqs[0];let t=ctx.currentTime;for(let i=0;i<seq.length;i+=2){const f=seq[i],d=seq[i+1];if(f>0){const o=ctx.createOscillator(),g=ctx.createGain();o.connect(g);g.connect(ctx.destination);o.frequency.value=f;g.gain.setValueAtTime(.3,t);g.gain.exponentialRampToValueAtTime(.01,t+d);o.start(t);o.stop(t+d);}t+=d;}}catch(e){}}
+
+// ===== SIMULATION =====
+function showSimulation(){renderSimRoles();showScreen('screen-sim');}
+function renderSimRoles(){document.getElementById('sim-roles-list').innerHTML=Object.entries(ROLES_DEF).map(([k,rd])=>`<div class="card" style="cursor:pointer" onclick="showRoleLearn('${k}')"><div style="display:flex;align-items:center;gap:10px;"><span style="font-size:26px;">${rd.icon}</span><div><div style="font-size:14px;font-weight:600;">${rd.name}</div><span class="role-badge ${rd.badge}">${{mafia:'Мафия',yakuza:'Якудза',neutral:'Нейтральный',town:'Мирный'}[rd.team]}</span></div></div></div>`).join('');}
+function showRoleLearn(k){const rd=ROLES_DEF[k];document.getElementById('sim-roles-list').innerHTML=`<div class="card"><div style="text-align:center;font-size:48px;margin-bottom:10px;">${rd.icon}</div><div style="text-align:center;font-family:'Playfair Display',serif;font-size:22px;color:var(--accent);margin-bottom:8px;">${rd.name}</div><div class="alert-box alert-info">${rd.desc}</div><div style="font-size:13px;color:var(--text2);margin-top:8px;"><div><strong>Команда:</strong> ${{mafia:'⚫ Мафия',yakuza:'🟣 Якудза',neutral:'🟡 Нейтральный',town:'🔴 Мирный город'}[rd.team]}</div><div><strong>Стреляет:</strong> ${rd.shoots?'✅':'❌'}</div></div><button class="btn btn-secondary btn-full mt8" onclick="renderSimRoles()">← Назад</button></div>`;}
+function runAutoSim(){const n=parseInt(document.getElementById('sim-count').value)||10;const ev=[];const pool=buildPool(n);const pls=pool.map((r,i)=>({num:i+1,role:r,alive:true}));ev.push(`🎮 ${n} игроков`);ev.push(pls.map(p=>`#${p.num}:${getRoleDef(p.role).name}`).join(', '));for(let r=0;r<20;r++){const alive=pls.filter(p=>p.alive);const maf=alive.filter(p=>['mafia','don'].includes(p.role));const town=alive.filter(p=>getRoleDef(p.role).team==='town');if(!maf.length){ev.push(`🏛️ День ${r+1}: Мирный победил!`);break;}if(maf.length>=town.length){ev.push(`🔫 Мафия победила!`);break;}ev.push(`🌙 Ночь ${r+1}`);const t=town[Math.floor(Math.random()*town.length)];if(t){t.alive=false;ev.push(`💀 Мафия → #${t.num} ${getRoleDef(t.role).name}`);}const an=pls.filter(p=>p.alive);const v=an[Math.floor(Math.random()*an.length)];if(v){v.alive=false;ev.push(`🗳 День: #${v.num} выголосован`);}}document.getElementById('sim-log').innerHTML=ev.map(e=>`<div class="sim-event">${e}</div>`).join('');}
+
+// ===== RULES =====
+function showRules(){const tl={mafia:'⚫ Мафия',yakuza:'🟣 Якудза',neutral:'🟡 Нейтральный',town:'🔴 Мирный город'};document.getElementById('rules-content').innerHTML=Object.entries(ROLES_DEF).map(([k,rd])=>`<div class="card"><div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;"><span style="font-size:26px;">${rd.icon}</span><div><div style="font-size:15px;font-weight:700;">${rd.name}</div><span class="role-badge ${rd.badge}">${tl[rd.team]}</span></div></div><div style="font-size:13px;color:var(--text2);line-height:1.6;">${rd.desc}</div></div>`).join('');showScreen('screen-rules');}
+
+// ===== SETTINGS =====
+function showSettings(){applyToggleUI();showScreen('screen-settings');}
+
+// ===== NOTES =====
+function showNotes(){document.getElementById('notes-text').value=G.notes;openModal('modal-notes');}
+function saveNotes(){G.notes=document.getElementById('notes-text').value;closeModal('modal-notes');saveState();}
+
+// ===== MODALS =====
+function openModal(id){document.getElementById(id).classList.add('open');}
+function closeModal(id){document.getElementById(id).classList.remove('open');}
+function showWarn(msg){document.getElementById('warn-text').innerHTML=msg;openModal('modal-warn');}
+function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.style.opacity='1';clearTimeout(t._t);t._t=setTimeout(()=>t.style.opacity='0',2500);}
+
+// ===== LOCAL STORAGE =====
+const SAVE_KEY='mafia_v4',HISTORY_KEY='mafia_history';
+function saveState(){try{localStorage.setItem(SAVE_KEY,JSON.stringify({G,ts:Date.now()}));}catch(e){}}
+function restoreState(){try{const raw=localStorage.getItem(SAVE_KEY);if(!raw)return false;const s=JSON.parse(raw);if(Date.now()-s.ts>86400000)return false;Object.assign(G,s.G);return true;}catch(e){return false;}}
+function saveToHistory(){try{const h=JSON.parse(localStorage.getItem(HISTORY_KEY)||'[]');h.unshift({date:new Date().toLocaleString('ru'),players:G.players.length,nights:G.nightNum,log:G.log,pd:G.players.map(p=>({num:p.num,name:p.name,role:p.role,alive:p.alive,voted:p.voted}))});localStorage.setItem(HISTORY_KEY,JSON.stringify(h.slice(0,20)));}catch(e){}}
+function showHistory(){const h=JSON.parse(localStorage.getItem(HISTORY_KEY)||'[]');document.getElementById('history-content').innerHTML=!h.length?'<div class="text-muted text-center" style="padding:32px;">Истории нет</div>':h.map((g,i)=>`<div class="card" style="cursor:pointer" onclick="showHistDetail(${i})"><div style="display:flex;justify-content:space-between;"><div><div style="font-size:14px;font-weight:600;">${g.date}</div><div class="text-muted">${g.players} игроков · ${g.nights} ночей</div></div><div style="font-size:12px;color:var(--text2);">✅ ${g.pd.filter(p=>p.alive).length} выжили</div></div></div>`).join('')+`<button class="btn btn-danger btn-full mt8" onclick="if(confirm('Удалить историю?')){localStorage.removeItem('${HISTORY_KEY}');showHistory();}">🗑 Очистить</button>`;showScreen('screen-history');}
+function showHistDetail(i){const h=JSON.parse(localStorage.getItem(HISTORY_KEY)||'[]');const g=h[i];if(!g)return;let html=`<div class="card"><div class="card-title">Состав</div>`;g.pd.forEach(p=>{const rd=getRoleDef(p.role);html+=`<div style="display:flex;gap:8px;align-items:center;padding:5px 0;border-bottom:1px solid var(--border);"><span>${rd.icon}</span><div style="flex:1;font-size:13px;"><strong>#${p.num} ${p.name}</strong> — ${rd.name}</div><span style="font-size:11px;color:var(--text2);">${p.alive?'жив':p.voted?'выгол.':'убит'}</span></div>`;});html+=`</div><div class="card"><div class="card-title">Журнал</div>`;g.log.forEach(e=>html+=`<div class="log-entry ${e.type}"><div class="log-time">${e.time}</div>${e.msg}</div>`);html+=`</div>`;document.getElementById('history-detail').innerHTML=html;showScreen('screen-history-detail');}
+function checkHistoryBtn(){const h=JSON.parse(localStorage.getItem(HISTORY_KEY)||'[]');const btn=document.getElementById('menu-history-btn');if(btn)btn.style.display=h.length?'':'none';}
+
+// ===== EXPORT/IMPORT SETTINGS =====
+function exportSettings(){
+  const data={
+    version:2,
+    settings:G.settings,
+    activeRoles:G.activeRoles,
+    customRoles:G.customRoles,
+    notes:G.notes||''
+  };
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}));
+  a.download='mafia_settings.json';a.click();
+  showToast('Настройки экспортированы');
+}
+function importSettingsFile(input){
+  const file=input.files[0];if(!file)return;
+  const r=new FileReader();
+  r.onload=e=>{
+    try{
+      const data=JSON.parse(e.target.result);
+      if(data.settings)Object.assign(G.settings,data.settings);
+      if(data.activeRoles)Object.assign(G.activeRoles,data.activeRoles);
+      if(data.customRoles)G.customRoles=data.customRoles;
+      if(data.notes)G.notes=data.notes;
+      saveState();applyToggleUI();
+      showToast('✅ Настройки загружены');
+    }catch(err){showWarn('Ошибка чтения файла. Убедитесь, что это mafia_settings.json');}
+  };
+  r.readAsText(file);
+  input.value='';
+}
+
+// ===== ADD PLAYER DURING GAME =====
+function openAddPlayer(){
+  const allKeys=Object.keys(ROLES_DEF).concat(G.customRoles.map(r=>r.key));
+  document.getElementById('ap-role').innerHTML=allKeys.map(k=>{const rd=getRoleDef(k);return`<option value="${k}">${rd.name}</option>`;}).join('');
+  document.getElementById('ap-name').value='';
+  openModal('modal-add-player');
+}
+function doAddPlayer(){
+  const name=document.getElementById('ap-name').value.trim()||'Новый игрок';
+  const role=document.getElementById('ap-role').value||'civilian';
+  const maxNum=G.players.reduce((m,p)=>Math.max(m,p.num),0);
+  const num=maxNum+1;
+  G.players.push({num,name,role,alive:true,voted:false,silent:false,immune:false,nominated:false,voteOut:false,actions:[]});
+  addLog('info',`➕ Добавлен игрок #${num} ${name} (${getRoleDef(role).name})`);
+  updateStats();renderPlayerList();refreshPhaseUI();saveState();
+  closeModal('modal-add-player');
+  showToast(`Игрок #${num} ${name} добавлен`);
+}
+
+// ===== INIT =====
+updateSetupPreview();checkHistoryBtn();
+if('serviceWorker'in navigator)navigator.serviceWorker.register('./sw.js').catch(()=>{});
+
+window.addEventListener('load',()=>{
+  if(restoreState()&&G.players.length>0){
+    const b=document.createElement('div');
+    b.style.cssText='position:fixed;bottom:0;left:0;right:0;background:#1a1a25;border-top:2px solid var(--accent);padding:12px 14px;z-index:200;display:flex;gap:8px;align-items:center;';
+    b.innerHTML=`<div style="flex:1;font-size:13px;">🔄 Незавершённая игра (ночь ${G.nightNum}, живых: ${G.players.filter(p=>p.alive).length})</div><button class="btn btn-primary btn-sm" onclick="resumeGame(this.parentNode)">Продолжить</button><button class="btn btn-secondary btn-sm" onclick="this.parentNode.remove();localStorage.removeItem('${SAVE_KEY}')">✕</button>`;
+    document.body.appendChild(b);
+  }
+});
+function resumeGame(banner){
+  banner.remove();updateStats();renderPlayerList();
+  document.getElementById('game-phase-title').textContent=G.phase==='night'?`Ночь ${G.nightNum}`:`День ${G.dayNum}`;
+  showScreen('screen-game');
+  if(G.phase==='night'){G._nightSteps=buildNightSteps();renderNightSteps();switchGameTab('night');}
+  else{buildDaySummary();buildVoteGrid();switchGameTab('day');}
+}
+</script>
+</body>
+</html>

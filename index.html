@@ -183,7 +183,7 @@ html,body{height:100%;width:100%;overflow:hidden;background:var(--bg);color:var(
   <div class="menu-logo"><h1>МАФИЯ</h1><p>Режим ведущего</p></div>
   <div class="menu-btns">
     <button class="btn-menu primary" onclick="showSetup()">🎮 Новая игра</button>
-    <button class="btn-menu" onclick="showScreen('screen-join')">👤 Войти игроком</button>
+    <button class="btn-menu" id="menu-join-btn" style="display:none" onclick="showScreen('screen-join')">👤 Войти игроком</button>
     <button class="btn-menu" onclick="showSimulation()">🤖 Симуляция</button>
     <button class="btn-menu" onclick="showRules()">📖 Правила ролей</button>
     <button class="btn-menu" onclick="showSettings()">⚙️ Настройки</button>
@@ -243,7 +243,15 @@ html,body{height:100%;width:100%;overflow:hidden;background:var(--bg);color:var(
         <button class="btn btn-secondary btn-sm" id="mode-manual" onclick="setAssignMode('manual')" style="flex:1">✏️ Вручную</button>
       </div>
       <div class="form-group mb8"><label class="inp-label">Количество игроков</label><input class="inp" id="setup-players" type="number" value="10" min="4" max="30" oninput="updateSetupPreview();if(assignMode==='manual')renderManualPlayers()"></div>
-      <div class="form-group mb8"><label class="inp-label">Пароль (необязательно)</label><input class="inp" id="setup-password" type="text" placeholder="Оставьте пустым — без пароля"></div>
+      <div class="form-group mb8">
+        <label class="inp-label">Режим «Вход игрока»</label>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-primary btn-sm" id="pm-off" onclick="setPlayerMode(false)" style="flex:1">🚫 Не активен</button>
+          <button class="btn btn-secondary btn-sm" id="pm-on" onclick="setPlayerMode(true)" style="flex:1">✅ Активен</button>
+        </div>
+        <div style="font-size:11px;color:var(--text2);margin-top:4px;" id="pm-desc">Игроки не входят сами — ведущий раздаёт роли.</div>
+      </div>
+      <div class="form-group mb8" id="setup-password-block" style="display:none"><label class="inp-label">Пароль игры</label><input class="inp" id="setup-password" type="text" placeholder="Пароль для входа игроков"></div>
     </div>
     <div id="auto-mode-block" class="card">
       <div class="card-title">Распределение ролей</div>
@@ -626,6 +634,7 @@ let G={
   beautyLastTarget:null,doctorLastTarget:null,doctorSelfUsed:false,
   currentNightStepIdx:0,_nightSteps:[],
   nominationOrder:[],voteOutOrder:[],
+  playerModeActive:false,
 };
 
 // ===== NAV =====
@@ -766,10 +775,24 @@ function buildPool(n){
   return pool;
 }
 
+// ===== PLAYER MODE =====
+function setPlayerMode(active){
+  G.playerModeActive=active;
+  const pwBlock=document.getElementById('setup-password-block');
+  if(pwBlock)pwBlock.style.display=active?'':'none';
+  const btnOn=document.getElementById('pm-on'),btnOff=document.getElementById('pm-off');
+  if(btnOn)btnOn.className=active?'btn btn-primary btn-sm':'btn btn-secondary btn-sm';
+  if(btnOff)btnOff.className=!active?'btn btn-primary btn-sm':'btn btn-secondary btn-sm';
+  const desc=document.getElementById('pm-desc');
+  if(desc)desc.textContent=active?'Игроки входят сами — вводят пароль, номер и имя на вкладке «Вход игрока».':'Игроки не входят сами — ведущий раздаёт роли.';
+  const jb=document.getElementById('menu-join-btn');
+  if(jb)jb.style.display=active?'':'none';
+}
+
 // ===== START GAME =====
 function startGame(){
   const n=parseInt(document.getElementById('setup-players').value)||10;
-  G.password=document.getElementById('setup-password').value.trim();
+  G.password=G.playerModeActive?(document.getElementById('setup-password').value.trim()):''; 
   G.players=[];G.log=[];G.nightNum=0;G.dayNum=0;G.nightActions={};G.nightResults=null;
   G.beautyLastTarget=null;G.doctorLastTarget=null;G.doctorSelfUsed=false;
   G.nominationOrder=[];G.voteOutOrder=[];
@@ -1403,12 +1426,6 @@ function buildDaySummary(){
   if(immunePlayers.length){
     h+=`<div class="alert-box alert-warn" style="margin-top:8px;">⚖️ Иммунитет Судьи: ${immunePlayers.map(p=>`<strong>#${p.num} ${p.name}</strong>`).join(', ')} — нельзя выголосовать сегодня.</div>`;
   }
-  // Dead players
-  const deadP=G.players.filter(p=>!p.alive);
-  if(deadP.length){h+=`<div class="alert-box alert-danger" style="margin-top:8px;"><strong>💀 Выбыли (${deadP.length}):</strong> `+deadP.map(p=>`#${p.num} ${p.name}${p.voted?' 🗳':''}`).join(', ')+'</div>';}
-  // Silent players
-  const silP=G.players.filter(p=>p.alive&&p.silent);
-  if(silP.length){h+=`<div class="alert-box alert-info" style="margin-top:8px;"><strong>🤫 Молчат:</strong> `+silP.map(p=>`#${p.num} ${p.name}`).join(', ')+'</div>';}
   h+=`</div>`;el.innerHTML=h;
 }
 
@@ -1468,7 +1485,6 @@ function voteNominated(){
   G.nominationOrder=G.nominationOrder.filter(n=>getPlayer(n)?.alive);
   G.voteOutOrder=[];
   updateStats();renderPlayerList();buildVoteGrid();saveState();
-  checkWinAfterVote();
 }
 
 // ===== DAY TIMERS =====
@@ -1486,31 +1502,22 @@ function startDayTimer(n){
 }
 
 // ===== WIN CHECK =====
-function detectWinner(){
+function checkWin(){
   const alive=G.players.filter(p=>p.alive);
   const maf=alive.filter(p=>['mafia','don'].includes(p.role));
   const yak=alive.filter(p=>p.role==='yakuza');
   const man=alive.filter(p=>p.role==='maniac');
   const town=alive.filter(p=>getRoleDef(p.role).team==='town');
-  if(!maf.length&&!yak.length&&!man.length)return'town';
-  if(maf.length&&maf.length>=town.length+yak.length+man.length)return'mafia';
-  if(yak.length&&!maf.length&&yak.length>=town.length+man.length)return'yakuza';
-  if(man.length===1&&alive.length===2){const o=alive.find(p=>p.role!=='maniac');if(o&&!getRoleDef(o.role).shoots)return'maniac';}
-  return null;
-}
-function showWinScreen(w){
-  const wd={town:{icon:'🏛️',title:'Мирный город победил!',sub:'Все угрозы устранены.'},mafia:{icon:'🔫',title:'Мафия победила!',sub:'Город под контролем.'},yakuza:{icon:'⚔️',title:'Якудза победила!',sub:'Японский клан захватил власть.'},maniac:{icon:'🔪',title:'Маньяк победил!',sub:'Последний выживший.'}}[w];
-  document.getElementById('win-icon').textContent=wd.icon;document.getElementById('win-title').textContent=wd.title;document.getElementById('win-sub').textContent=wd.sub;
-  addLog('info',`🏆 ${wd.title}`);saveToHistory();localStorage.removeItem(SAVE_KEY);showScreen('screen-win');
-}
-function checkWinAfterVote(){
-  const w=detectWinner();
-  if(w){if(confirm(`🏆 Есть победитель! Завершить игру?`)){showWinScreen(w);}else{addLog('info','Ведущий решил продолжить игру.');}}
-}
-function checkWin(){
-  const w=detectWinner();
-  if(w){if(confirm(`🏆 Есть победитель! Завершить игру?`)){showWinScreen(w);}else{addLog('info','Ведущий решил продолжить игру.');}}
-  else showWarn('Победителя нет — игра продолжается.');
+  let w=null;
+  if(!maf.length&&!yak.length&&!man.length)w='town';
+  else if(maf.length&&maf.length>=town.length+yak.length+man.length)w='mafia';
+  else if(yak.length&&!maf.length&&yak.length>=town.length+man.length)w='yakuza';
+  else if(man.length===1&&alive.length===2){const o=alive.find(p=>p.role!=='maniac');if(o&&!getRoleDef(o.role).shoots)w='maniac';}
+  if(w){
+    const wd={town:{icon:'🏛️',title:'Мирный город победил!',sub:'Все угрозы устранены.'},mafia:{icon:'🔫',title:'Мафия победила!',sub:'Город под контролем.'},yakuza:{icon:'⚔️',title:'Якудза победила!',sub:'Японский клан захватил власть.'},maniac:{icon:'🔪',title:'Маньяк победил!',sub:'Последний выживший.'}}[w];
+    document.getElementById('win-icon').textContent=wd.icon;document.getElementById('win-title').textContent=wd.title;document.getElementById('win-sub').textContent=wd.sub;
+    addLog('info',`🏆 ${wd.title}`);saveToHistory();localStorage.removeItem(SAVE_KEY);showScreen('screen-win');
+  } else showWarn('Игра продолжается — победителя нет.');
 }
 function endGame(){if(confirm('Завершить игру?')){saveToHistory();localStorage.removeItem(SAVE_KEY);showScreen('screen-menu');checkHistoryBtn();}}
 
@@ -1744,6 +1751,7 @@ updateSetupPreview();checkHistoryBtn();
 if('serviceWorker'in navigator)navigator.serviceWorker.register('./sw.js').catch(()=>{});
 
 window.addEventListener('load',()=>{
+  setPlayerMode(false);
   if(restoreState()&&G.players.length>0){
     const b=document.createElement('div');
     b.style.cssText='position:fixed;bottom:0;left:0;right:0;background:#1a1a25;border-top:2px solid var(--accent);padding:12px 14px;z-index:200;display:flex;gap:8px;align-items:center;';

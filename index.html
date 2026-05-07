@@ -1403,6 +1403,12 @@ function buildDaySummary(){
   if(immunePlayers.length){
     h+=`<div class="alert-box alert-warn" style="margin-top:8px;">⚖️ Иммунитет Судьи: ${immunePlayers.map(p=>`<strong>#${p.num} ${p.name}</strong>`).join(', ')} — нельзя выголосовать сегодня.</div>`;
   }
+  // Dead players
+  const deadP=G.players.filter(p=>!p.alive);
+  if(deadP.length){h+=`<div class="alert-box alert-danger" style="margin-top:8px;"><strong>💀 Выбыли (${deadP.length}):</strong> `+deadP.map(p=>`#${p.num} ${p.name}${p.voted?' 🗳':''}`).join(', ')+'</div>';}
+  // Silent players
+  const silP=G.players.filter(p=>p.alive&&p.silent);
+  if(silP.length){h+=`<div class="alert-box alert-info" style="margin-top:8px;"><strong>🤫 Молчат:</strong> `+silP.map(p=>`#${p.num} ${p.name}`).join(', ')+'</div>';}
   h+=`</div>`;el.innerHTML=h;
 }
 
@@ -1462,6 +1468,7 @@ function voteNominated(){
   G.nominationOrder=G.nominationOrder.filter(n=>getPlayer(n)?.alive);
   G.voteOutOrder=[];
   updateStats();renderPlayerList();buildVoteGrid();saveState();
+  checkWinAfterVote();
 }
 
 // ===== DAY TIMERS =====
@@ -1479,22 +1486,31 @@ function startDayTimer(n){
 }
 
 // ===== WIN CHECK =====
-function checkWin(){
+function detectWinner(){
   const alive=G.players.filter(p=>p.alive);
   const maf=alive.filter(p=>['mafia','don'].includes(p.role));
   const yak=alive.filter(p=>p.role==='yakuza');
   const man=alive.filter(p=>p.role==='maniac');
   const town=alive.filter(p=>getRoleDef(p.role).team==='town');
-  let w=null;
-  if(!maf.length&&!yak.length&&!man.length)w='town';
-  else if(maf.length&&maf.length>=town.length+yak.length+man.length)w='mafia';
-  else if(yak.length&&!maf.length&&yak.length>=town.length+man.length)w='yakuza';
-  else if(man.length===1&&alive.length===2){const o=alive.find(p=>p.role!=='maniac');if(o&&!getRoleDef(o.role).shoots)w='maniac';}
-  if(w){
-    const wd={town:{icon:'🏛️',title:'Мирный город победил!',sub:'Все угрозы устранены.'},mafia:{icon:'🔫',title:'Мафия победила!',sub:'Город под контролем.'},yakuza:{icon:'⚔️',title:'Якудза победила!',sub:'Японский клан захватил власть.'},maniac:{icon:'🔪',title:'Маньяк победил!',sub:'Последний выживший.'}}[w];
-    document.getElementById('win-icon').textContent=wd.icon;document.getElementById('win-title').textContent=wd.title;document.getElementById('win-sub').textContent=wd.sub;
-    addLog('info',`🏆 ${wd.title}`);saveToHistory();localStorage.removeItem(SAVE_KEY);showScreen('screen-win');
-  } else showWarn('Игра продолжается — победителя нет.');
+  if(!maf.length&&!yak.length&&!man.length)return'town';
+  if(maf.length&&maf.length>=town.length+yak.length+man.length)return'mafia';
+  if(yak.length&&!maf.length&&yak.length>=town.length+man.length)return'yakuza';
+  if(man.length===1&&alive.length===2){const o=alive.find(p=>p.role!=='maniac');if(o&&!getRoleDef(o.role).shoots)return'maniac';}
+  return null;
+}
+function showWinScreen(w){
+  const wd={town:{icon:'🏛️',title:'Мирный город победил!',sub:'Все угрозы устранены.'},mafia:{icon:'🔫',title:'Мафия победила!',sub:'Город под контролем.'},yakuza:{icon:'⚔️',title:'Якудза победила!',sub:'Японский клан захватил власть.'},maniac:{icon:'🔪',title:'Маньяк победил!',sub:'Последний выживший.'}}[w];
+  document.getElementById('win-icon').textContent=wd.icon;document.getElementById('win-title').textContent=wd.title;document.getElementById('win-sub').textContent=wd.sub;
+  addLog('info',`🏆 ${wd.title}`);saveToHistory();localStorage.removeItem(SAVE_KEY);showScreen('screen-win');
+}
+function checkWinAfterVote(){
+  const w=detectWinner();
+  if(w){if(confirm(`🏆 Есть победитель! Завершить игру?`)){showWinScreen(w);}else{addLog('info','Ведущий решил продолжить игру.');}}
+}
+function checkWin(){
+  const w=detectWinner();
+  if(w){if(confirm(`🏆 Есть победитель! Завершить игру?`)){showWinScreen(w);}else{addLog('info','Ведущий решил продолжить игру.');}}
+  else showWarn('Победителя нет — игра продолжается.');
 }
 function endGame(){if(confirm('Завершить игру?')){saveToHistory();localStorage.removeItem(SAVE_KEY);showScreen('screen-menu');checkHistoryBtn();}}
 

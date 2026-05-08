@@ -1235,9 +1235,14 @@ function finishNight(){
   const announceResults=[];// публично
   const privateResults=[];// только ведущий
 
+  // Snapshot BEFORE applying kills — for returnToNightEdit rollback
+  G._nightSnapshot=G.players.map(p=>({...p,actions:[...p.actions]}));
+  G._beautyLastTargetBeforeNight=G.beautyLastTarget;
+  G._doctorLastTargetSnapshot=G.doctorLastTarget;
+  G._doctorSelfUsedSnapshot=G.doctorSelfUsed;
+
   // Check beauty validity
   let beautyValid=false,beautyNum=getPlayerNumByRole('beauty');
-  G._beautyLastTargetBeforeNight=G.beautyLastTarget; // save for returnToNightEdit
   if(beautyTarget>0){
     const lastNight=G._beautyLastTargetBeforeNight;
     const ok=!(!G.settings.beautySelf&&beautyNum&&beautyTarget===beautyNum)&&!(!G.settings.beautyRepeat&&lastNight===beautyTarget);
@@ -1245,12 +1250,11 @@ function finishNight(){
       beautyValid=true;G.beautyLastTarget=beautyTarget;
       const bp=getPlayer(beautyTarget);
       if(bp&&bp.alive){
-        bp.silent=true;// красотка всегда делает цель молчащей
+        bp.silent=true;
         bp.actions.push(`Ночь ${G.nightNum}: Красотка пришла — молчит`);
         addLog('night',`💋 Красотка → #${beautyTarget} ${bp.name} — молчит`);
       }
     }
-  }
   }
 
   // Doctor
@@ -1502,7 +1506,7 @@ function finishNight(){
 
   // Silent counter = only this night's beauty targets (not cumulative)
   updateStats();
-}                    // ← добавить эту строку
+
   let html=`<div class="nri-section">📢 Объявить игрокам утром</div>`;
   if(announceResults.length)announceResults.forEach(r=>html+=`<div class="nri"><div class="nri-icon">${r.icon}</div><div class="nri-text">${r.text}</div></div>`);
   else html+=`<div class="nri"><div class="nri-icon">🌙</div><div class="nri-text">Тихая ночь.</div></div>`;
@@ -1527,12 +1531,12 @@ function returnToNightEdit(){
   if(G._beautyLastTargetBeforeNight!==undefined) G.beautyLastTarget=G._beautyLastTargetBeforeNight;
   if(G._doctorLastTargetSnapshot!==undefined) G.doctorLastTarget=G._doctorLastTargetSnapshot;
   if(G._doctorSelfUsedSnapshot!==undefined) G.doctorSelfUsed=G._doctorSelfUsedSnapshot;
-  G.nightResults=null;
-  // Удалить записи этой ночи из лога (кроме заголовка === НОЧЬ N ===)
+  // Rollback log entries from this night
   const nightHeader=`🌙 === НОЧЬ ${G.nightNum} ===`;
   const headerIdx=G.log.findIndex(e=>e.msg===nightHeader);
   if(headerIdx>=0) G.log=G.log.slice(0,headerIdx+1);
   addLog('night',`↩ Ночь ${G.nightNum}: корректировка`);
+  G.nightResults=null;
   document.getElementById('game-phase-title').textContent=`Ночь ${G.nightNum}`;
   document.getElementById('game-phase-sub').textContent='Ночная фаза';
   updateStats();renderPlayerList();
@@ -1561,16 +1565,14 @@ function buildDaySummary(){
   let h=`<div class="card"><div class="card-title">📢 Объявить игрокам — итоги ночи ${G.nightResults.nightNum}</div>`;
   if(G.nightResults.announceResults.length)G.nightResults.announceResults.forEach(r=>h+=`<div class="nri"><div class="nri-icon">${r.icon}</div><div class="nri-text">${r.text}</div></div>`);
   else h+=`<div class="text-muted">Тихая ночь.</div>`;
-  // Beauty visit info (legacy)
+  // Beauty visit info
   if(G.nightResults.beautyInfo){h+=`<div class="nri"><div class="nri-icon">💋</div><div class="nri-text">${G.nightResults.beautyInfo}</div></div>`;}
-  // Killed tonight
-  const killedTonight=G.players.filter(p=>!p.alive&&!p.voted&&p.actions&&p.actions.some&&p.actions.some(a=>typeof a==='string'&&a.includes(`Ночь ${G.nightResults.nightNum}:`)));
-  // Fallback: all dead non-voted players (since killed this night)
-  const killedNight=G.players.filter(p=>!p.alive&&!p.voted);
-  if(killedNight.length){h+=`<div class="alert-box alert-warn" style="margin-top:8px;">💀 Убиты сегодня (${killedNight.length}): ${killedNight.map(p=>`<strong>#${p.num} ${p.name}</strong>`).join(', ')}</div>`;}
-  // Silent count
+  // Silent count — only players who have silent=true AND were silenced this night
   const silentPlayers=G.players.filter(p=>p.alive&&p.silent);
   if(silentPlayers.length){h+=`<div class="alert-box alert-info" style="margin-top:8px;">🤫 Молчат сегодня (${silentPlayers.length}): ${silentPlayers.map(p=>`<strong>#${p.num} ${p.name}</strong>`).join(', ')}</div>`;}
+  // Killed tonight
+  const killedNight=G.players.filter(p=>!p.alive&&!p.voted);
+  if(killedNight.length){h+=`<div class="alert-box alert-warn" style="margin-top:8px;">💀 Убиты сегодня (${killedNight.length}): ${killedNight.map(p=>`<strong>#${p.num} ${p.name}</strong>`).join(', ')}</div>`;}
   // Show judge immunity info
   const immunePlayers=G.players.filter(p=>p.alive&&p.immune);
   if(immunePlayers.length){
@@ -1854,7 +1856,7 @@ function nextPlaylistTrack(){
     _loadPlaylistTrack(_playlistIdx+1);
     if(musicPlaying){try{customAudio.play().catch(()=>{});}catch(e){}}
   } else {
-    // Встроенные треки
+    // Switch built-in ambient tracks
     const wasPlaying=musicPlaying;
     if(musicPlaying){try{if(musicGain)musicGain.disconnect();}catch(e){}}
     musicTrack=(musicTrack===99?0:(musicTrack+1)%3);

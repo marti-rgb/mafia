@@ -788,8 +788,7 @@ function setPlayerMode(active){
   if(btnOff)btnOff.className=!active?'btn btn-primary btn-sm':'btn btn-secondary btn-sm';
   const desc=document.getElementById('pm-desc');
   if(desc)desc.textContent=active?'Игроки входят сами — вводят пароль, номер и имя на вкладке «Вход игрока».':'Игроки не входят сами — ведущий раздаёт роли.';
-  const jb=document.getElementById('menu-join-btn');
-  if(jb)jb.style.display=active?'':'none';
+  // join button always visible
 }
 
 // ===== START GAME =====

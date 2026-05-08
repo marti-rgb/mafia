@@ -224,7 +224,7 @@ html,body{height:100%;width:100%;overflow:hidden;background:var(--bg);color:var(
     <div id="rr-team" class="rr-team"></div>
     <div id="rr-desc" class="rr-desc"></div>
     <div style="display:flex;flex-direction:column;align-items:center;gap:10px;margin-top:12px;">
-      <button class="btn btn-secondary" style="min-width:180px;" onclick="markRemembered()">Запомнил ✓</button>
+      <button class="btn btn-secondary" id="btn-remembered" style="min-width:180px;" onclick="markRemembered(this)">Запомнил ✓</button>
       <button class="btn btn-secondary" style="min-width:180px;" onclick="showScreen('screen-menu')">← На главную</button>
     </div>
   </div>
@@ -341,10 +341,13 @@ html,body{height:100%;width:100%;overflow:hidden;background:var(--bg);color:var(
         <button class="btn btn-primary btn-sm" id="trk-0" onclick="selectTrack(0)">🌑 Ночь</button>
         <button class="btn btn-secondary btn-sm" id="trk-1" onclick="selectTrack(1)">🔮 Мистика</button>
         <button class="btn btn-secondary btn-sm" id="trk-2" onclick="selectTrack(2)">🌊 Тихая</button>
-        <button class="btn btn-secondary btn-sm" onclick="pickMusicFile()">📁 С телефона</button>
+        <button class="btn btn-secondary btn-sm" onclick="pickMusicFile()">📁 Файл</button>
+        <button class="btn btn-secondary btn-sm" onclick="pickMusicFolder()">📂 Папка</button>
       </div>
-      <input type="file" id="music-file-input" accept="audio/*" style="display:none" onchange="loadMusicFile(this)">
+      <input type="file" id="music-file-input" accept="audio/*" multiple style="display:none" onchange="loadMusicFiles(this)">
+      <input type="file" id="music-folder-input" accept="audio/*" webkitdirectory multiple style="display:none" onchange="loadMusicFiles(this)">
       <div id="custom-track-name" class="text-muted mt8" style="font-size:11px;"></div>
+      <div id="music-playlist-ui" style="display:none;margin-top:8px;"></div>
     </div>
     <div class="card">
       <div class="card-title">🔔 Будильник</div>
@@ -385,6 +388,7 @@ html,body{height:100%;width:100%;overflow:hidden;background:var(--bg);color:var(
       <div class="btn-icon" id="hdr-music-btn" onclick="toggleMusic()" title="Музыка">♪</div>
       <div class="btn-icon" onclick="showScreen('screen-timer')">⏱</div>
       <div class="btn-icon" onclick="showNotes()">📝</div>
+      <div class="btn-icon" onclick="showSettingsInGame()" title="Настройки">⚙️</div>
       <div class="btn-icon" onclick="endGame()">⏹</div>
     </div>
   </div>
@@ -396,6 +400,8 @@ html,body{height:100%;width:100%;overflow:hidden;background:var(--bg);color:var(
     <div class="stat-pill dead"><div class="n" id="stat-dead">0</div><div class="l">УБИТЫХ</div></div>
     <div class="stat-pill voted"><div class="n" id="stat-voted">0</div><div class="l">ВЫГОЛ.</div></div>
     <div class="stat-pill" style="border-color:var(--blue);"><div class="n" id="stat-silent" style="color:var(--blue2);">0</div><div class="l">МОЛЧ.</div></div>
+    <div class="stat-pill" style="border-color:#8e44ad;"><div class="n" id="stat-night" style="color:#b86fe0;">0</div><div class="l">НОЧЕЙ</div></div>
+    <div class="stat-pill" style="border-color:var(--accent2);"><div class="n" id="stat-day" style="color:var(--accent2);">0</div><div class="l">ДНЕЙ</div></div>
   </div>
   <div class="tabs">
     <div class="tab active" onclick="gameTab('players',this)">Игроки</div>
@@ -518,7 +524,7 @@ html,body{height:100%;width:100%;overflow:hidden;background:var(--bg);color:var(
 
 <!-- SETTINGS -->
 <div id="screen-settings" class="screen">
-  <div class="hdr"><div class="hdr-title">Настройки</div><div class="btn-icon" onclick="showScreen('screen-menu')">✕</div></div>
+  <div class="hdr"><div class="hdr-title">Настройки</div><div class="btn-icon" onclick="closeSettings()">✕</div></div>
   <div class="scroll-area">
     <div class="card"><div class="card-title">Интерфейс</div>
       <div class="setting-row"><div><div class="setting-label">Показывать роли в списке</div></div><div class="toggle-switch on" id="tog-show-roles" onclick="toggleSetting('showRoles',this)"></div></div>
@@ -621,7 +627,7 @@ const ROLES_DEF={
   yakuza:   {name:'Якудза',     icon:'⚔️',team:'yakuza', shoots:true, badge:'rb-yakuza',
     desc:'Отдельная группировка. Нет Дона. Несострел если не договорились. Видят только своих.'},
   detective:{name:'Детектив',   icon:'🔍',team:'town',   shoots:true, badge:'rb-detective',
-    desc:'Стреляет или проверяет — на выбор. При проверке результат приватный. При выстреле — объявляется днём. Погибает если застрелил красного (по умолчанию).'},
+    desc:'Стреляет или проверяет — на выбор. При выстреле — объявляется днём. Погибает если застрелил красного (по умолчанию).'},
   sheriff:  {name:'Шериф',      icon:'🔰',team:'town',   shoots:false,badge:'rb-sheriff',
     desc:'Проверяет игроков ночью. Маньяк показывается красным пока жива мафия, после — чёрным.'},
   doctor:   {name:'Доктор',     icon:'💊',team:'town',   shoots:false,badge:'rb-doctor',
@@ -647,7 +653,7 @@ let G={
   players:[],log:[],nightActions:{},nightResults:null,
   settings:{
     beautySelf:false,beautyRepeat:true,doctorMode:1,ripperMode:1,
-    detDiesAny:false,maniacMode:0,priestMode:1,showRoles:true,nightMusicAuto:false,musicMode:'auto',
+    detDiesAny:false,maniacMode:0,priestMode:1,showRoles:true,nightMusicAuto:true,musicMode:'auto',
     filterManual:false,musicVolume:20,alarmRepeats:3,musicTrack:0
   },
   customRoles:[],
@@ -945,6 +951,8 @@ function updateStats(){
   document.getElementById('stat-dead').textContent=G.players.filter(p=>!p.alive&&!p.voted).length;
   document.getElementById('stat-voted').textContent=G.players.filter(p=>p.voted).length;
   const silEl=document.getElementById('stat-silent');if(silEl)silEl.textContent=G.players.filter(p=>p.alive&&p.silent).length;
+  const nightEl=document.getElementById('stat-night');if(nightEl)nightEl.textContent=G.nightNum||0;
+  const dayEl=document.getElementById('stat-day');if(dayEl)dayEl.textContent=G.dayNum||0;
 }
 
 function killPlayer(num){
@@ -1006,7 +1014,7 @@ function goNight(){
   else if(yakN.length&&!mafN.length&&yakN.length>=townN.length+manN.length)wn='yakuza';
   else if(manN.length===1&&aliveN.length===2){const o=aliveN.find(p=>p.role!=='maniac');if(o&&!getRoleDef(o.role).shoots)wn='maniac';}
   if(wn){const wd={town:{icon:'🏛️',title:'Мирный город победил!',sub:'Все угрозы устранены.'},mafia:{icon:'🔫',title:'Мафия победила!',sub:'Город под контролем.'},yakuza:{icon:'⚔️',title:'Якудза победила!',sub:'Японский клан захватил власть.'},maniac:{icon:'🔪',title:'Маньяк победил!',sub:'Последний выживший.'}}[wn];document.getElementById('win-icon').textContent=wd.icon;document.getElementById('win-title').textContent=wd.title;document.getElementById('win-sub').textContent=wd.sub;addLog('info',`🏆 ${wd.title}`);saveToHistory();localStorage.removeItem(SAVE_KEY);showScreen('screen-win');return;}
-  G.nightNum++;G.nightActions={};G.phase='night';G._nightSnapshot=null;G._beautyLastTargetBeforeNight=undefined;
+  G.nightNum++;G.nightActions={};G.phase='night';G._nightSnapshot=null;G._beautyLastTargetBeforeNight=G.beautyLastTarget;
   G.players.forEach(p=>{if(p.alive){p.silent=false;p.immune=false;p.nominated=false;p.voteOut=false;}});
   G.nominationOrder=[];G.voteOutOrder=[];
   document.getElementById('game-phase-title').textContent=`Ночь ${G.nightNum}`;
@@ -1016,7 +1024,13 @@ function goNight(){
   addLog('night',`🌙 === НОЧЬ ${G.nightNum} ===`);
   renderNightSteps();updateStats();renderPlayerList();
   switchGameTab('night');saveState();
-  if(G.settings.nightMusicAuto){if(!musicPlaying&&!musicPaused)toggleMusic();else if(musicPaused)toggleMusic();}
+  if(G.settings.nightMusicAuto){
+    if(musicPaused){toggleMusic();}
+    else if(!musicPlaying){
+      // Try to start - AudioContext might need user gesture unlock
+      try{toggleMusic();}catch(e){}
+    }
+  }
 }
 
 function buildNightSteps(){
@@ -1142,7 +1156,8 @@ function onNightInput(id,val,stepKey){
   if(id==='beauty-target'){
     const bN=getPlayerNumByRole('beauty');
     if(!G.settings.beautySelf&&bN&&num===bN){crEl.className='check-result show check-warn';crEl.innerHTML='⚠️ Красотка не может ходить к себе!';return;}
-    if(!G.settings.beautyRepeat&&G.beautyLastTarget===num){crEl.className='check-result show check-warn';crEl.innerHTML='⚠️ Нельзя — та же цель что прошлой ночью!';return;}
+    const lastNight=G._beautyLastTargetBeforeNight!==undefined?G._beautyLastTargetBeforeNight:G.beautyLastTarget;
+    if(!G.settings.beautyRepeat&&lastNight===num){crEl.className='check-result show check-warn';crEl.innerHTML='⚠️ Нельзя — та же цель что прошлой ночью!';return;}
   }
   crEl.className='check-result';crEl.textContent='';
 }
@@ -1248,6 +1263,7 @@ function finishNight(){
       if(beautyP&&!killed.has(beautyP.num)){
         // Beauty alive + target is her visited player → player survives, silenced
         const p=getPlayer(targetNum);if(p)p.silent=true;
+        announceResults.push({icon:'💋',text:`Красотка ходила к игроку #${targetNum} ${tp.name}. Он молчит.`});
         announceResults.push({icon:'💋',text:`${shooterLabel} стрелял в <strong>#${targetNum} ${tp.name}</strong> — к нему ходила Красотка. Жив, но молчит весь день.`});
         addLog('info',`💋 Красотка спасла #${targetNum} ${tp.name}`);
         return;
@@ -1445,11 +1461,18 @@ function finishNight(){
     if(on&&has)roleSummary.push(r);
   });
 
-  // Sort announceResults: beauty entries first, beauty's dragged victim last
+  // Sort announceResults: beauty "ходила" entry first, then others, dragged victim last
   const beautyFirstResults=[];
   const beautyVictimResults=[];
   const otherResults=[];
+  // Add beauty visit announcement as first item always
+  if(beautyTarget>0&&beautyValid){
+    const btp=getPlayer(beautyTarget);
+    const silentNow=btp&&btp.silent;
+    beautyFirstResults.push({icon:'💋',text:`Красотка ходила к игроку #${beautyTarget} ${btp?.name||''}. ${silentNow?'Он молчит.':''}`});
+  }
   announceResults.forEach(r=>{
+    if(r.icon==='💋'&&r.text&&r.text.startsWith('Красотка ходила'))return;// skip duplicate
     if(r.icon==='💋'||r.icon==='💥')beautyFirstResults.push(r);
     else if(beautyValid&&beautyTarget>0&&r.isDraggedVictim)beautyVictimResults.push(r);
     else otherResults.push(r);
@@ -1457,7 +1480,7 @@ function finishNight(){
   const sortedAnnounce=[...beautyFirstResults,...otherResults,...beautyVictimResults];
 
   G.nightResults={announceResults:sortedAnnounce,privateResults,roleSummary,nightNum:G.nightNum,
-    beautyInfo:beautyTarget>0&&beautyValid?`Красотка ходила к игроку #${beautyTarget} ${getPlayer(beautyTarget)?.name||''}`:null};
+    beautyInfo:null};
   addLog('night',`Итоги ночи ${G.nightNum}: убито ${killed.size}`);
 
   // Silent counter = only this night's beauty targets (not cumulative)
@@ -1496,6 +1519,9 @@ function returnToNightEdit(){
 // ===== DAY =====
 function goDay(){
   G.dayNum++;G.phase='day';
+  // Очистить отметки вотаут с прошлого дня
+  G.players.forEach(p=>{p.nominated=false;p.voteOut=false;});
+  G.nominationOrder=[];G.voteOutOrder=[];
   document.getElementById('game-phase-title').textContent=`День ${G.dayNum}`;
   document.getElementById('game-phase-sub').textContent='Обсуждение — голосование';
   addLog('day',`☀️ === ДЕНЬ ${G.dayNum} ===`);
@@ -1599,7 +1625,7 @@ function voteNominated(){
 }
 
 // ===== DAY TIMERS =====
-let dayTimers={1:{secs:60,base:60,running:false,interval:null},2:{secs:30,base:30,running:false,interval:null}};
+let dayTimers={1:{secs:30,base:30,running:false,interval:null},2:{secs:20,base:20,running:false,interval:null}};
 function setDayTimerPreset(n,s){
   const t=dayTimers[n];clearInterval(t.interval);t.running=false;t.secs=s;t.base=s;
   updateDayTimerDisp(n,s);document.getElementById(`day-t${n}-btn`).textContent=n===1?'▶ Речь':'▶ Оправд.';
@@ -1754,22 +1780,53 @@ function setMusicMode(mode){
   if(desc)desc.textContent=mode==='auto'?'Авто: вкл при ночи, выкл при дне. Кнопка ♪ — пауза/продолжить.':'Вручную: кнопка ♪ вкл/выкл музыку.';
 }
 function pickMusicFile(){document.getElementById('music-file-input').click();}
-function loadMusicFile(input){
-  const file=input.files[0];if(!file)return;
-  // Stop current music first
+function pickMusicFolder(){document.getElementById('music-folder-input').click();}
+
+let _playlist=[],_playlistIdx=0;
+
+function loadMusicFiles(input){
+  const files=Array.from(input.files||[]).filter(f=>f.type.startsWith('audio/'));
+  if(!files.length)return;
   if(musicPlaying)toggleMusic();
   if(customAudio){try{customAudio.pause();customAudio.src='';}catch(e){}}
+  _playlist=files;_playlistIdx=0;
+  musicTrack=99;
+  [0,1,2].forEach(j=>{const el=document.getElementById('trk-'+j);if(el)el.className='btn btn-secondary btn-sm';});
+  _loadPlaylistTrack(0);
+  input.value='';
+}
+
+function _loadPlaylistTrack(idx){
+  if(!_playlist.length)return;
+  idx=((idx%_playlist.length)+_playlist.length)%_playlist.length;
+  _playlistIdx=idx;
+  const file=_playlist[idx];
   customAudio=new Audio();
   customAudio.src=URL.createObjectURL(file);
-  customAudio.loop=true;
   customAudio.volume=(G.settings.musicVolume||20)/100;
-  musicTrack=99;
-  // Update track button UI
-  [0,1,2].forEach(j=>{const el=document.getElementById('trk-'+j);if(el)el.className='btn btn-secondary btn-sm';});
-  const nm=document.getElementById('custom-track-name');if(nm)nm.textContent=`📁 ${file.name}`;
-  showToast(`Загружено: ${file.name}. Нажмите ♪ для воспроизведения.`);
-  // Don't autoplay — user controls with header button or nightMusicAuto
+  customAudio.onended=()=>{_loadPlaylistTrack(_playlistIdx+1);if(musicPlaying){customAudio.play().catch(()=>{});}};
+  const nm=document.getElementById('custom-track-name');
+  if(nm)nm.textContent=`📁 ${file.name}${_playlist.length>1?' ('+(_playlistIdx+1)+'/'+_playlist.length+')':''}`;
+  // Update playlist UI
+  const pui=document.getElementById('music-playlist-ui');
+  if(pui&&_playlist.length>1){
+    pui.style.display='';
+    pui.innerHTML=`<div style="display:flex;gap:6px;align-items:center;font-size:12px;color:var(--text2);">
+      <button class="btn btn-secondary btn-sm" onclick="_loadPlaylistTrack(_playlistIdx-1);if(musicPlaying){customAudio.play().catch(()=>{});}">⏮</button>
+      <span style="flex:1;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;">${file.name}</span>
+      <button class="btn btn-secondary btn-sm" onclick="nextPlaylistTrack()">⏭</button>
+    </div>`;
+  } else if(pui){pui.style.display='none';}
+  showToast(_playlist.length>1?`Загружено ${_playlist.length} треков. Трек ${idx+1}: ${file.name}`:`Загружено: ${file.name}`);
 }
+
+function nextPlaylistTrack(){
+  if(!_playlist.length)return;
+  _loadPlaylistTrack(_playlistIdx+1);
+  if(musicPlaying){try{customAudio.play().catch(()=>{});}catch(e){}}
+}
+
+function loadMusicFile(input){loadMusicFiles(input);}// backward compat
 
 // ===== ALARM =====
 function testAlarm(t){alarmType=t;playAlarmRepeated();}
@@ -1783,10 +1840,31 @@ function showRoleLearn(k){const rd=ROLES_DEF[k];document.getElementById('sim-rol
 function runAutoSim(){const n=parseInt(document.getElementById('sim-count').value)||10;const ev=[];const pool=buildPool(n);const pls=pool.map((r,i)=>({num:i+1,role:r,alive:true}));ev.push(`🎮 ${n} игроков`);ev.push(pls.map(p=>`#${p.num}:${getRoleDef(p.role).name}`).join(', '));for(let r=0;r<20;r++){const alive=pls.filter(p=>p.alive);const maf=alive.filter(p=>['mafia','don'].includes(p.role));const town=alive.filter(p=>getRoleDef(p.role).team==='town');if(!maf.length){ev.push(`🏛️ День ${r+1}: Мирный победил!`);break;}if(maf.length>=town.length){ev.push(`🔫 Мафия победила!`);break;}ev.push(`🌙 Ночь ${r+1}`);const t=town[Math.floor(Math.random()*town.length)];if(t){t.alive=false;ev.push(`💀 Мафия → #${t.num} ${getRoleDef(t.role).name}`);}const an=pls.filter(p=>p.alive);const v=an[Math.floor(Math.random()*an.length)];if(v){v.alive=false;ev.push(`🗳 День: #${v.num} выголосован`);}}document.getElementById('sim-log').innerHTML=ev.map(e=>`<div class="sim-event">${e}</div>`).join('');}
 
 // ===== RULES =====
-function showRules(){const tl={mafia:'⚫ Мафия',yakuza:'🟣 Якудза',neutral:'🟡 Нейтральный',town:'🔴 Мирный город'};document.getElementById('rules-content').innerHTML=Object.entries(ROLES_DEF).map(([k,rd])=>`<div class="card"><div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;"><span style="font-size:26px;">${rd.icon}</span><div><div style="font-size:15px;font-weight:700;">${rd.name}</div><span class="role-badge ${rd.badge}">${tl[rd.team]}</span></div></div><div style="font-size:13px;color:var(--text2);line-height:1.6;">${rd.desc}</div></div>`).join('');showScreen('screen-rules');}
+function showRules(){
+  const tl={mafia:'⚫ Мафия',yakuza:'🟣 Якудза',neutral:'🟡 Нейтральный',town:'🔴 Мирный город'};
+  const gameActive=G.players.length>0&&G.phase!==undefined;
+  const gs=G.settings;
+  function getRuleDesc(k,rd){
+    if(!gameActive)return rd.desc||'';
+    if(k==='doctor'){const modes=['Может лечить себя без ограничений.','Нельзя лечить одного и того же дважды подряд.','Себя можно вылечить только один раз за игру, других — нельзя повторно.'];return'Защищает игрока от любого выстрела. '+(modes[gs.doctorMode]||modes[1]);}
+    if(k==='beauty'){const selfRule=gs.beautySelf?'Может ходить к себе.':'Не может ходить к себе.';const repeatRule=gs.beautyRepeat?'Можно ходить к одному игроку несколько ночей подряд.':'Нельзя ходить к одному и тому же игроку две ночи подряд.';return'Приходит к игроку ночью. Если к нему идёт стреляющая роль — выживает и молчит весь день. Если стреляют в Красотку — умирает она и тот, к кому она шла. '+selfRule+' '+repeatRule;}
+    if(k==='maniac'){const manModes=['Показываюсь красным пока жива мафия/якудза, после их гибели — чёрным.','Всегда показываюсь чёрным на всех проверках.'];return'Играю сам за себя. Не могу отказаться от выстрела. Выигрываю 1 на 1 с нестреляющим. '+(manModes[gs.maniacMode||0]||manModes[0]);}
+    if(k==='priest'){const priModes=['Режим: проверяю всех как Шериф. Если нахожу Маньяка — умираю молча.','Режим: ищу только Маньяка. Нашёл — умираю молча.'];return'Ищу Маньяка ночью. При нахождении умираю молча — ведущий объявляет утром. '+(priModes[gs.priestMode!==undefined?gs.priestMode:1]||priModes[1]);}
+    if(k==='ripper'){const ripMode=gs.ripperMode===0?'Если пошёл к обывателю — умирает сам.':'Если пошёл к обывателю — ничего не происходит.';return'Убивает активные роли ночью. Доктор сильнее. '+ripMode;}
+    if(k==='detective'){const detMode=gs.detDiesAny?'Погибает при выстреле в любого.':'Погибает только при выстреле в красного.';return'Стреляет или проверяет — на выбор. '+detMode;}
+    return rd.desc||'';
+  }
+  let header='';
+  if(gameActive){header=`<div class="alert-box alert-info" style="margin-bottom:10px;">⚙️ Правила с учётом настроек текущей игры</div>`;}
+  document.getElementById('rules-content').innerHTML=header+Object.entries(ROLES_DEF).map(([k,rd])=>`<div class="card"><div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;"><span style="font-size:26px;">${rd.icon}</span><div><div style="font-size:15px;font-weight:700;">${rd.name}</div><span class="role-badge ${rd.badge}">${tl[rd.team]}</span></div></div><div style="font-size:13px;color:var(--text2);line-height:1.6;">${getRuleDesc(k,rd)}</div></div>`).join('');
+  showScreen('screen-rules');
+}
 
 // ===== SETTINGS =====
-function showSettings(){applyToggleUI();showScreen('screen-settings');}
+let _settingsCalledFromGame=false;
+function showSettings(){_settingsCalledFromGame=false;applyToggleUI();showScreen('screen-settings');}
+function showSettingsInGame(){_settingsCalledFromGame=true;applyToggleUI();showScreen('screen-settings');}
+function closeSettings(){showScreen(_settingsCalledFromGame?'screen-game':'screen-menu');}
 
 // ===== NOTES =====
 function showNotes(){document.getElementById('notes-text').value=G.notes;openModal('modal-notes');}
@@ -1957,15 +2035,22 @@ function fbStartListening(gameId){
   if(btn) btn.style.display = '';
 }
 
-// Игрок нажал Запомнил — помечаем в Firebase
-async function markRemembered(){
-  // Try to mark in Firebase if we have gameId stored
+// Игрок нажал Запомнил — помечаем в Firebase, остаёмся на странице
+async function markRemembered(btn){
   const gameId=window._playerGameId;
   const num=window._playerNum;
   if(gameId&&num){
     try{await db.ref('games/'+gameId+'/players/'+num+'/remembered').set(true);}catch(e){}
   }
-  showScreen('screen-join');
+  // Менять цвет кнопки — остаёмся на странице
+  const el=btn||document.getElementById('btn-remembered');
+  if(el){
+    el.style.background='var(--green)';
+    el.style.color='#fff';
+    el.style.borderColor='var(--green)';
+    el.textContent='✅ Запомнил';
+    el.onclick=null;
+  }
 }
 
 // Ведущий: проверить кто не нажал Запомнил

@@ -191,6 +191,7 @@ html,body{height:100%;width:100%;overflow:hidden;background:var(--bg);color:var(
     <button class="btn-menu" onclick="showRules()">📖 Правила ролей</button>
     <button class="btn-menu" onclick="showSettings()">⚙️ Настройки</button>
     <button class="btn-menu" id="menu-history-btn" style="display:none" onclick="showHistory()">📋 История игр</button>
+    <a href="https://t.me/Inspector_party" target="_blank" class="btn-menu" style="text-decoration:none;justify-content:center;">✈️ Мафия на Марьиной роще</a>
   </div>
 </div>
 
@@ -222,7 +223,10 @@ html,body{height:100%;width:100%;overflow:hidden;background:var(--bg);color:var(
     <div id="rr-name" class="rr-name">—</div>
     <div id="rr-team" class="rr-team"></div>
     <div id="rr-desc" class="rr-desc"></div>
-    <button class="btn btn-secondary mt8" onclick="showScreen('screen-join')">Запомнил ✓</button>
+    <div style="display:flex;flex-direction:column;align-items:center;gap:10px;margin-top:12px;">
+      <button class="btn btn-secondary" style="min-width:180px;" onclick="markRemembered()">Запомнил ✓</button>
+      <button class="btn btn-secondary" style="min-width:180px;" onclick="showScreen('screen-menu')">← На главную</button>
+    </div>
   </div>
 </div>
 
@@ -388,6 +392,7 @@ html,body{height:100%;width:100%;overflow:hidden;background:var(--bg);color:var(
     <div class="stat-pill alive"><div class="n" id="stat-alive">0</div><div class="l">ЖИВЫХ</div></div>
     <div class="stat-pill maf"><div class="n" id="stat-mafia">0</div><div class="l">МАФИЯ</div></div>
     <div class="stat-pill town-a"><div class="n" id="stat-town">0</div><div class="l">МИРНЫХ</div></div>
+    <div class="stat-pill" style="border-color:var(--accent);"><div class="n" id="stat-neutral" style="color:var(--accent);">0</div><div class="l">НЕЙТР.</div></div>
     <div class="stat-pill dead"><div class="n" id="stat-dead">0</div><div class="l">УБИТЫХ</div></div>
     <div class="stat-pill voted"><div class="n" id="stat-voted">0</div><div class="l">ВЫГОЛ.</div></div>
     <div class="stat-pill" style="border-color:var(--blue);"><div class="n" id="stat-silent" style="color:var(--blue2);">0</div><div class="l">МОЛЧ.</div></div>
@@ -398,7 +403,7 @@ html,body{height:100%;width:100%;overflow:hidden;background:var(--bg);color:var(
     <div class="tab" onclick="gameTab('day',this)">День</div>
     <div class="tab" onclick="gameTab('log',this)">Журнал</div>
   </div>
-  <div id="gtab-players" class="scroll-area"><div style="padding-bottom:4px;display:flex;justify-content:flex-end;"><button class="btn btn-secondary btn-sm" id="add-player-btn" onclick="openAddPlayer()" style="font-size:11px;">➕ Добавить игрока</button></div><div id="player-list"></div></div>
+  <div id="gtab-players" class="scroll-area"><div style="padding-bottom:4px;display:flex;justify-content:space-between;align-items:center;gap:6px;"><button class="btn btn-secondary btn-sm" id="add-player-btn" onclick="openAddPlayer()" style="font-size:11px;">➕ Добавить игрока</button><button class="btn btn-secondary btn-sm" id="check-joined-btn" onclick="checkPlayersJoined()" style="font-size:11px;display:none;">🔍 Кто не нажал «Запомнил»</button></div><div id="player-list"></div></div>
   <div id="gtab-night" class="scroll-area" style="display:none">
     <div class="text-center mb8"><span class="night-num-badge" id="night-badge">🌙 Ночь 1</span></div>
     <div id="night-steps"></div>
@@ -612,7 +617,7 @@ const ROLES_DEF={
   mafia:    {name:'Мафия',      icon:'🔫',team:'mafia',  shoots:true, badge:'rb-mafia',
     desc:'Мафия ✅ просыпается ночью только по команде ведущего. За отведённое ведущим время мафиози единогласно (показывая на пальцах) выбирают любую жертву и стреляют в любого игрока. Если стреляют в себя — это самострел (один из мафиози может сознательно устроить самострел как самопожертвование). Если мафия за отведённое ведущим время не договорилась (не выбрала жертву), ведущий фиксирует несострел и укладывает мафию спать. Либо по решению ведущего последнее слово на отстреле может быть за доном.'},
   don:      {name:'Дон',        icon:'🎩',team:'mafia',  shoots:true, badge:'rb-don',
-    desc:'Просыпается с мафией, затем отдельно ищет Шерифа. Последнее слово при выстреле мафии.'},
+    desc:'Просыпается с мафией, затем отдельно ищет Шерифа. Последнее слово при выстреле мафии — если это озвучено ведущим.'},
   yakuza:   {name:'Якудза',     icon:'⚔️',team:'yakuza', shoots:true, badge:'rb-yakuza',
     desc:'Отдельная группировка. Нет Дона. Несострел если не договорились. Видят только своих.'},
   detective:{name:'Детектив',   icon:'🔍',team:'town',   shoots:true, badge:'rb-detective',
@@ -932,9 +937,11 @@ function updateStats(){
   const alive=G.players.filter(p=>p.alive);
   const mafAlive=alive.filter(p=>getRoleDef(p.role).team==='mafia'||getRoleDef(p.role).team==='yakuza');
   const townAlive=alive.filter(p=>getRoleDef(p.role).team==='town');
+  const neutralAlive=alive.filter(p=>getRoleDef(p.role).team==='neutral');
   document.getElementById('stat-alive').textContent=alive.length;
   document.getElementById('stat-mafia').textContent=mafAlive.length;
   document.getElementById('stat-town').textContent=townAlive.length;
+  const nEl=document.getElementById('stat-neutral');if(nEl)nEl.textContent=neutralAlive.length;
   document.getElementById('stat-dead').textContent=G.players.filter(p=>!p.alive&&!p.voted).length;
   document.getElementById('stat-voted').textContent=G.players.filter(p=>p.voted).length;
   const silEl=document.getElementById('stat-silent');if(silEl)silEl.textContent=G.players.filter(p=>p.alive&&p.silent).length;
@@ -999,7 +1006,7 @@ function goNight(){
   else if(yakN.length&&!mafN.length&&yakN.length>=townN.length+manN.length)wn='yakuza';
   else if(manN.length===1&&aliveN.length===2){const o=aliveN.find(p=>p.role!=='maniac');if(o&&!getRoleDef(o.role).shoots)wn='maniac';}
   if(wn){const wd={town:{icon:'🏛️',title:'Мирный город победил!',sub:'Все угрозы устранены.'},mafia:{icon:'🔫',title:'Мафия победила!',sub:'Город под контролем.'},yakuza:{icon:'⚔️',title:'Якудза победила!',sub:'Японский клан захватил власть.'},maniac:{icon:'🔪',title:'Маньяк победил!',sub:'Последний выживший.'}}[wn];document.getElementById('win-icon').textContent=wd.icon;document.getElementById('win-title').textContent=wd.title;document.getElementById('win-sub').textContent=wd.sub;addLog('info',`🏆 ${wd.title}`);saveToHistory();localStorage.removeItem(SAVE_KEY);showScreen('screen-win');return;}
-  G.nightNum++;G.nightActions={};G.phase='night';
+  G.nightNum++;G.nightActions={};G.phase='night';G._nightSnapshot=null;G._beautyLastTargetBeforeNight=undefined;
   G.players.forEach(p=>{if(p.alive){p.silent=false;p.immune=false;p.nominated=false;p.voteOut=false;}});
   G.nominationOrder=[];G.voteOutOrder=[];
   document.getElementById('game-phase-title').textContent=`Ночь ${G.nightNum}`;
@@ -1158,6 +1165,10 @@ function markNoShot(team){
 // ===== FINISH NIGHT =====
 function finishNight(){
   const A=G.nightActions;
+  // Save player state snapshot BEFORE processing this night (for returnToNightEdit rollback)
+  G._nightSnapshot=G.players.map(p=>({...p,actions:[...p.actions]}));
+  G._doctorLastTargetSnapshot=G.doctorLastTarget;
+  G._doctorSelfUsedSnapshot=G.doctorSelfUsed;
   const alive=G.players.filter(p=>p.alive);
 
   // Check missing — warn but allow proceed
@@ -1256,7 +1267,7 @@ function finishNight(){
         const bt=getPlayer(beautyTarget);
         if(bt&&bt.alive){
           killed.add(beautyTarget);
-          announceResults.push({icon:'💥',text:`${shooterLabel} застрелил Красотку (#${beautyP.num} ${beautyP.name}) — и игрок #${beautyTarget} ${bt.name} (куда она ходила) тоже погибает.`});
+          announceResults.push({icon:'💥',isDraggedVictim:true,text:`${shooterLabel} застрелил Красотку (#${beautyP.num} ${beautyP.name}) — и игрок #${beautyTarget} ${bt.name} (куда она ходила) тоже погибает.`});
         } else {
           announceResults.push({icon:'💀',text:`${shooterLabel} застрелил Красотку (#${beautyP.num} ${beautyP.name}).`});
         }
@@ -1434,7 +1445,18 @@ function finishNight(){
     if(on&&has)roleSummary.push(r);
   });
 
-  G.nightResults={announceResults,privateResults,roleSummary,nightNum:G.nightNum,
+  // Sort announceResults: beauty entries first, beauty's dragged victim last
+  const beautyFirstResults=[];
+  const beautyVictimResults=[];
+  const otherResults=[];
+  announceResults.forEach(r=>{
+    if(r.icon==='💋'||r.icon==='💥')beautyFirstResults.push(r);
+    else if(beautyValid&&beautyTarget>0&&r.isDraggedVictim)beautyVictimResults.push(r);
+    else otherResults.push(r);
+  });
+  const sortedAnnounce=[...beautyFirstResults,...otherResults,...beautyVictimResults];
+
+  G.nightResults={announceResults:sortedAnnounce,privateResults,roleSummary,nightNum:G.nightNum,
     beautyInfo:beautyTarget>0&&beautyValid?`Красотка ходила к игроку #${beautyTarget} ${getPlayer(beautyTarget)?.name||''}`:null};
   addLog('night',`Итоги ночи ${G.nightNum}: убито ${killed.size}`);
 
@@ -1457,10 +1479,18 @@ function finishNight(){
 
 function returnToNightEdit(){
   G.phase='night';
-  // Restore beautyLastTarget to what it was BEFORE this night (so re-edit doesn't block same target)
+  // Rollback player states to before this night was processed
+  if(G._nightSnapshot){
+    G.players=G._nightSnapshot.map(p=>({...p,actions:[...p.actions]}));
+  }
   if(G._beautyLastTargetBeforeNight!==undefined) G.beautyLastTarget=G._beautyLastTargetBeforeNight;
+  if(G._doctorLastTargetSnapshot!==undefined) G.doctorLastTarget=G._doctorLastTargetSnapshot;
+  if(G._doctorSelfUsedSnapshot!==undefined) G.doctorSelfUsed=G._doctorSelfUsedSnapshot;
+  G.nightResults=null;
   document.getElementById('game-phase-title').textContent=`Ночь ${G.nightNum}`;
+  updateStats();renderPlayerList();
   switchGameTab('night');
+  saveState();
 }
 
 // ===== DAY =====
@@ -1908,20 +1938,52 @@ function fbStartListening(gameId){
       renderPlayerList(); updateStats(); saveState();
       showToast('👤 #' + data.num + ' ' + data.name + ' вошёл в игру');
     }
-    // Check if all players joined
-    const alive = G.players.filter(p => p.alive);
+    // Check if all players remembered
     fbGameRef.child('players').once('value', s => {
       const all = s.val();
       if(!all) return;
+      const total = G.players.filter(p=>p.alive).length;
       const joined = Object.values(all).filter(p => p.joined).length;
-      if(joined >= alive.length){
-        showToast('✅ Все игроки вошли в игру! (' + joined + '/' + alive.length + ')');
+      const remembered = Object.values(all).filter(p => p.remembered).length;
+      if(remembered >= total && total > 0){
+        showToast('✅ Все ' + total + ' игроков нажали «Запомнил»!');
+      } else if(joined >= total && total > 0){
+        showToast('✅ Все игроки вошли в игру! (' + joined + '/' + total + ')');
       }
     });
   });
+  // Show check button
+  const btn = document.getElementById('check-joined-btn');
+  if(btn) btn.style.display = '';
 }
 
-// Игрок: войти в игру через Firebase
+// Игрок нажал Запомнил — помечаем в Firebase
+async function markRemembered(){
+  // Try to mark in Firebase if we have gameId stored
+  const gameId=window._playerGameId;
+  const num=window._playerNum;
+  if(gameId&&num){
+    try{await db.ref('games/'+gameId+'/players/'+num+'/remembered').set(true);}catch(e){}
+  }
+  showScreen('screen-join');
+}
+
+// Ведущий: проверить кто не нажал Запомнил
+async function checkPlayersJoined(){
+  if(!G._gameId){showWarn('Режим входа игроков не активен.');return;}
+  const snap=await db.ref('games/'+G._gameId+'/players').once('value');
+  const all=snap.val();
+  if(!all){showWarn('Нет данных о игроках.');return;}
+  const notRemembered=G.players.filter(p=>p.alive&&(!all[p.num]||!all[p.num].remembered)).map(p=>`#${p.num} ${p.name}`);
+  const remembered=G.players.filter(p=>p.alive&&all[p.num]&&all[p.num].remembered).map(p=>`#${p.num} ${p.name}`);
+  if(notRemembered.length===0){
+    showWarn(`✅ Все ${remembered.length} игроков нажали «Запомнил»!`);
+  } else {
+    showWarn(`🔍 Ещё не нажали «Запомнил» (${notRemembered.length}):<br><br><strong>${notRemembered.join('<br>')}</strong><br><br>Нажали (${remembered.length}): ${remembered.join(', ')}`);
+  }
+}
+
+
 async function joinGameFirebase(){
   const pw   = document.getElementById('join-password').value.trim();
   const num  = parseInt(document.getElementById('join-num').value) || 0;
@@ -1984,6 +2046,9 @@ async function joinGameFirebase(){
   document.getElementById('rr-desc').textContent = desc;
   const rrPlayer = document.getElementById('rr-player-info');
   if(rrPlayer) rrPlayer.textContent = 'Игрок #' + num + ' — ' + name;
+  // Store for markRemembered
+  window._playerGameId = gameId;
+  window._playerNum = num;
   showScreen('screen-role-reveal');
 }
 

@@ -283,7 +283,7 @@ html,body{height:100%;width:100%;overflow:hidden;background:var(--bg);color:var(
     <div class="card">
       <div class="card-title">Красотка</div>
       <div class="setting-row"><div><div class="setting-label">Может ходить к себе</div></div><div class="toggle-switch" id="tog-beauty-self" onclick="toggleSetting('beautySelf',this)"></div></div>
-      <div class="setting-row"><div><div class="setting-label">Ходить к одному подряд</div></div><div class="toggle-switch on" id="tog-beauty-repeat" onclick="toggleSetting('beautyRepeat',this)"></div></div>
+      <div class="setting-row"><div><div class="setting-label">Может ходить к одному подряд</div></div><div class="toggle-switch on" id="tog-beauty-repeat" onclick="toggleSetting('beautyRepeat',this)"></div></div>
     </div>
     <div class="card">
       <div class="card-title">Доктор — режим</div>
@@ -296,13 +296,27 @@ html,body{height:100%;width:100%;overflow:hidden;background:var(--bg);color:var(
     <div class="card">
       <div class="card-title">Потрошитель — режим</div>
       <div style="display:flex;flex-direction:column;gap:6px;">
-        <button class="btn btn-secondary" id="rmode-0" onclick="setRipperMode(0)">Убивает активных, умирает от обывателей</button>
-        <button class="btn btn-primary" id="rmode-1" onclick="setRipperMode(1)">Убивает активных, от обывателей — ничего</button>
+        <button class="btn btn-secondary" id="rmode-0" onclick="setRipperMode(0)">Убивает активных, от обывателей — умирает</button>
+        <button class="btn btn-primary" id="rmode-1" onclick="setRipperMode(1)">Убивает активных, от обывателей — не умирает</button>
       </div>
     </div>
     <div class="card">
       <div class="card-title">Детектив</div>
-      <div class="setting-row"><div><div class="setting-label">Умирает при стрельбе в любого</div><div class="setting-sub">По умолчанию — только при красном</div></div><div class="toggle-switch" id="tog-det-any" onclick="toggleSetting('detDiesAny',this)"></div></div>
+      <div class="setting-row"><div><div class="setting-label">Умирает при стрельбе в любого</div><div class="setting-sub">По умолчанию — умирает если выстрелил в мирную роль</div></div><div class="toggle-switch" id="tog-det-any" onclick="toggleSetting('detDiesAny',this)"></div></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Маньяк — режим проверок</div>
+      <div style="display:flex;flex-direction:column;gap:6px;">
+        <button class="btn btn-primary" id="maniac-mode-0" onclick="setManiacMode(0)">Красный пока жива мафия/якудза, потом чёрный</button>
+        <button class="btn btn-secondary" id="maniac-mode-1" onclick="setManiacMode(1)">Всегда чёрный на всех проверках</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Священник — режим</div>
+      <div style="display:flex;flex-direction:column;gap:6px;">
+        <button class="btn btn-secondary" id="priest-mode-0" onclick="setPriestMode(0)">Ищет всех (проверки как у Шерифа), умирает на Маньяке</button>
+        <button class="btn btn-primary" id="priest-mode-1" onclick="setPriestMode(1)">Ищет только Маньяка (по умолчанию)</button>
+      </div>
     </div>
     <div class="card">
       <div class="card-title">🎵 Музыка</div>
@@ -607,15 +621,15 @@ const ROLES_DEF={
   doctor:   {name:'Доктор',     icon:'💊',team:'town',   shoots:false,badge:'rb-doctor',
     desc:'Защищает игрока от любого выстрела. Сильнее всех защит. Режим настраивается.'},
   beauty:   {name:'Красотка',   icon:'💋',team:'town',   shoots:false,badge:'rb-beauty',
-    desc:'Приходит к игроку. Если к нему идёт стреляющая роль — игрок выживает и молчит весь день. Если стреляют в саму Красотку — умирает она и игрок куда она ходила.'},
+    desc:'Приходит к игроку ночью. НЕ МОЖЕТ отказаться от действия. НЕ МОЖЕТ ходить к себе (если иное не озвучено ведущим). Если к посещённому идёт стреляющая роль — он выживает и молчит весь день. Если стреляют в Красотку — умирает она и тот, к кому она шла.'},
   maniac:   {name:'Маньяк',     icon:'🔪',team:'neutral',shoots:true, badge:'rb-maniac',
-    desc:'Играет сам за себя. Не может отказаться от выстрела. Выигрывает 1 на 1 с нестреляющим.'},
+    desc:'Играет сам за себя. Не может отказаться от выстрела. Выигрывает 1 на 1 с нестреляющим. Режим проверок настраивается.'},
   priest:   {name:'Священник',  icon:'✝️',team:'town',   shoots:false,badge:'rb-priest',
-    desc:'Ищет маньяка. При нахождении — умирает молча, ведущий объявляет утром.'},
+    desc:'Ищет маньяка ночью. При нахождении — умирает молча, ведущий объявляет утром. На прощальной речи по своему выбору может сказать в стол кого нашёл. Режим настраивается.'},
   judge:    {name:'Судья',      icon:'⚖️',team:'town',   shoots:false,badge:'rb-judge',
-    desc:'Даёт иммунитет одному игроку. Его нельзя выголосовать в этот день.'},
+    desc:'Даёт иммунитет одному игроку (в том числе и себе). Этого игрока нельзя выголосовать на дневном голосовании.'},
   ripper:   {name:'Потрошитель',icon:'🗡️',team:'town',   shoots:true, badge:'rb-ripper',
-    desc:'Стреляет ночью. Убивает активные роли. Поведение с обывателями настраивается. Доктор сильнее.'},
+    desc:'Стреляет ночью (может отказаться от выстрела). Убивает активные роли. Поведение с мирными настраивается. Доктор сильнее.'},
   civilian: {name:'Обыватель',  icon:'👤',team:'town',   shoots:false,badge:'rb-civilian',
     desc:'Голосует днём. Вычисляет и выголосовывает чёрных.'},
 };
@@ -627,7 +641,7 @@ let G={
   players:[],log:[],nightActions:{},nightResults:null,
   settings:{
     beautySelf:false,beautyRepeat:true,doctorMode:1,ripperMode:1,
-    detDiesAny:false,showRoles:true,nightMusicAuto:false,musicMode:'auto',
+    detDiesAny:false,maniacMode:0,priestMode:1,showRoles:true,nightMusicAuto:false,musicMode:'auto',
     filterManual:false,musicVolume:20,alarmRepeats:3,musicTrack:0
   },
   customRoles:[],
@@ -662,7 +676,7 @@ function simTab(name,el){
 
 // ===== SETUP =====
 let assignMode='auto';
-function showSetup(){renderRoleToggles();updateSetupPreview();applyModeUI();applyDoctorModeUI();applyRipperModeUI();applyToggleUI();showScreen('screen-setup');}
+function showSetup(){renderRoleToggles();updateSetupPreview();applyModeUI();applyDoctorModeUI();applyRipperModeUI();applyToggleUI();setManiacMode(G.settings.maniacMode||0);setPriestMode(G.settings.priestMode!==undefined?G.settings.priestMode:1);showScreen('screen-setup');}
 
 function setAssignMode(m){
   assignMode=m;
@@ -743,6 +757,8 @@ function setDoctorMode(m){G.settings.doctorMode=m;applyDoctorModeUI();}
 function applyDoctorModeUI(){[0,1,2].forEach(i=>{const el=document.getElementById('dmode-'+i);if(el){el.className=G.settings.doctorMode===i?'btn btn-primary':'btn btn-secondary';}});}
 function setRipperMode(m){G.settings.ripperMode=m;applyRipperModeUI();}
 function applyRipperModeUI(){[0,1].forEach(i=>{const el=document.getElementById('rmode-'+i);if(el){el.className=G.settings.ripperMode===i?'btn btn-primary':'btn btn-secondary';}});}
+function setManiacMode(m){G.settings.maniacMode=m;[0,1].forEach(i=>{const el=document.getElementById('maniac-mode-'+i);if(el)el.className=G.settings.maniacMode===i?'btn btn-primary':'btn btn-secondary';});}
+function setPriestMode(m){G.settings.priestMode=m;[0,1].forEach(i=>{const el=document.getElementById('priest-mode-'+i);if(el)el.className=G.settings.priestMode===i?'btn btn-primary':'btn btn-secondary';}); renderNightSteps&&G.phase==='night'&&renderNightSteps();}
 
 function saveCustomRole(){
   const name=document.getElementById('cr-name').value.trim();if(!name)return;
@@ -1004,7 +1020,7 @@ function buildNightSteps(){
     else if(roleKey==='doctor')inputs=[{id:'doc-target',label:'Защищает №',ph:'Номер'}];
     else if(roleKey==='beauty')inputs=[{id:'beauty-target',label:'Красотка идёт к №',ph:'Номер'}];
     else if(roleKey==='maniac')inputs=[{id:'maniac-target',label:'Стреляет в №',ph:'Номер'}];
-    else if(roleKey==='priest')inputs=[{id:'priest-target',label:'Ищет маньяка — №',ph:'Номер'}];
+    else if(roleKey==='priest')inputs=[{id:'priest-target',label:G.settings.priestMode===0?'Проверяет игрока — №':'Ищет маньяка — №',ph:'Номер'}];
     else if(roleKey==='judge')inputs=[{id:'judge-target',label:'Иммунитет №',ph:'Номер'}];
     else if(roleKey==='ripper')inputs=[{id:'ripper-target',label:'Идёт к №',ph:'Номер'}];
     steps.push({key:roleKey,label:rd.name,icon:rd.icon,roleKey,isDead:pl.every(p=>!p.alive),inputs,desc:`Живые: ${aliveNums}`});
@@ -1075,7 +1091,7 @@ function onNightInput(id,val,stepKey){
     const rd=getRoleDef(p.role);const mafAlive=G.players.some(pl=>pl.alive&&(pl.role==='mafia'||pl.role==='don'));
     let res,cls;
     if(rd.team==='mafia'||rd.team==='yakuza'){res=`⚫ ЧЁРНЫЙ — ${rd.name}`;cls='check-black';}
-    else if(p.role==='maniac'){res=mafAlive?'🔴 КРАСНЫЙ (Маньяк — мафия жива)':'⚫ ЧЁРНЫЙ (Маньяк — мафии нет!)';cls=mafAlive?'check-red':'check-warn';}
+    else if(p.role==='maniac'){if(G.settings.maniacMode===1){res='⚫ ЧЁРНЫЙ — Маньяк';cls='check-black';}else{res=mafAlive?'🔴 КРАСНЫЙ (Маньяк — мафия жива)':'⚫ ЧЁРНЫЙ (Маньяк — мафии нет!)';cls=mafAlive?'check-red':'check-black';}}
     else{res=`🔴 КРАСНЫЙ — ${rd.name}`;cls='check-red';}
     crEl.className='check-result show '+cls;crEl.innerHTML=res;return;
   }
@@ -1325,7 +1341,7 @@ function finishNight(){
         const rd=getRoleDef(tp.role);const mafAlive=alive.some(p=>p.role==='mafia'||p.role==='don');
         let res,cls;
         if(rd.team==='mafia'||rd.team==='yakuza'){res=`⚫ ЧЁРНЫЙ — ${rd.name}`;cls='check-black';}
-        else if(tp.role==='maniac'){if(mafAlive){res='🔴 КРАСНЫЙ (Маньяк — мафия жива)';cls='check-red';}else{res='⚫ ЧЁРНЫЙ (Маньяк — мафии нет!)';cls='check-warn';privateResults.push({icon:'⚠️',text:'Мафия мертва! Маньяк теперь ЧЁРНЫЙ.'});}}
+        else if(tp.role==='maniac'){if(G.settings.maniacMode===1){res='⚫ ЧЁРНЫЙ — Маньяк';cls='check-black';}else if(mafAlive){res='🔴 КРАСНЫЙ (Маньяк — мафия жива)';cls='check-red';}else{res='⚫ ЧЁРНЫЙ (Маньяк — мафии нет!)';cls='check-black';privateResults.push({icon:'⚠️',text:'Мафия мертва! Маньяк теперь ЧЁРНЫЙ.'});}}
         else{res=`🔴 КРАСНЫЙ — ${rd.name}`;cls='check-red';}
         privateResults.push({icon:'🔰',text:`Шериф → <strong>#${sherTarget} ${tp.name}</strong>: <strong>${res}</strong>`});
         sa.actions.push(`Ночь ${G.nightNum}: #${sherTarget} → ${res}`);
@@ -1349,8 +1365,23 @@ function finishNight(){
     if(pa){
       addLog('night',`✝️ Священник → #${priestTarget}`);
       const tp=getPlayer(priestTarget);
-      if(tp&&tp.role==='maniac'){killed.add(pa.num);privateResults.push({icon:'✝️',text:`Священник нашёл Маньяка (#${priestTarget}) — Священник (#${pa.num} ${pa.name}) погибает. Объявить утром.`});}
-      else{privateResults.push({icon:'✝️',text:`Священник → #${priestTarget} — не маньяк.`});}
+      if(tp){
+        if(tp.role==='maniac'){
+          killed.add(pa.num);
+          privateResults.push({icon:'✝️',text:`Священник нашёл Маньяка (#${priestTarget} ${tp.name}) — Священник (#${pa.num} ${pa.name}) погибает. Объявить утром.`});
+          pa.actions.push(`Ночь ${G.nightNum}: нашёл Маньяка #${priestTarget}`);
+        } else if(G.settings.priestMode===0){
+          const rd2=getRoleDef(tp.role);const mafA=alive.some(p=>p.role==='mafia'||p.role==='don');
+          let res2;
+          if(rd2.team==='mafia'||rd2.team==='yakuza'){res2=`⚫ ЧЁРНЫЙ — ${rd2.name}`;}
+          else if(tp.role==='maniac'){res2=mafA?'🔴 КРАСНЫЙ (Маньяк)':'⚫ ЧЁРНЫЙ (Маньяк)';}
+          else{res2=`🔴 КРАСНЫЙ — ${rd2.name}`;}
+          privateResults.push({icon:'✝️',text:`Священник → <strong>#${priestTarget} ${tp.name}</strong>: ${res2}`});
+          pa.actions.push(`Ночь ${G.nightNum}: #${priestTarget} → ${res2}`);
+        } else {
+          privateResults.push({icon:'✝️',text:`Священник → #${priestTarget} ${tp.name} — не маньяк.`});
+        }
+      }
     }
   }
 
@@ -1771,6 +1802,11 @@ function resumeGame(banner){
 }
 
 // ===== FIREBASE =====
+function buildGameId(password){
+  const d = new Date();
+  const date = d.getFullYear()+''+String(d.getMonth()+1).padStart(2,'0')+''+String(d.getDate()).padStart(2,'0');
+  return password + '_' + date;
+}
 const firebaseConfig = {
   apiKey: "AIzaSyASuqTD17ntBrUROsLty_bE_Tn9H8_VAA",
   authDomain: "mafia-f2d74.firebaseapp.com",
@@ -1788,16 +1824,27 @@ let fbPlayersListener = null;
 // Ведущий: записать игру в Firebase
 function fbPublishGame(){
   if(!G.playerModeActive) return;
-  const gameId = G.password;
+  const gameId = buildGameId(G.password);
+  G._gameId = gameId;
   if(!gameId){showWarn('Введите пароль игры для режима «Вход игрока».');return false;}
   fbGameRef = db.ref('games/' + gameId);
   const playersData = {};
   G.players.forEach(p => {
     playersData[p.num] = {num:p.num, role:p.role, name:p.name, joined:false};
   });
-  fbGameRef.set({players: playersData, active: true, createdAt: Date.now()});
+  const settingsData = {
+    doctorMode: G.settings.doctorMode,
+    ripperMode: G.settings.ripperMode,
+    beautySelf: G.settings.beautySelf,
+    beautyRepeat: G.settings.beautyRepeat,
+    detDiesAny: G.settings.detDiesAny,
+    maniacMode: G.settings.maniacMode||0,
+    priestMode: G.settings.priestMode!==undefined?G.settings.priestMode:1,
+    totalPlayers: G.players.length
+  };
+  fbGameRef.set({players: playersData, settings: settingsData, active: true, createdAt: Date.now()});
   // Listen for player name updates
-  fbStartListening(gameId);
+  fbStartListening(G._gameId);
   return true;
 }
 
@@ -1813,6 +1860,16 @@ function fbStartListening(gameId){
       renderPlayerList(); updateStats(); saveState();
       showToast('👤 #' + data.num + ' ' + data.name + ' вошёл в игру');
     }
+    // Check if all players joined
+    const alive = G.players.filter(p => p.alive);
+    fbGameRef.child('players').once('value', s => {
+      const all = s.val();
+      if(!all) return;
+      const joined = Object.values(all).filter(p => p.joined).length;
+      if(joined >= alive.length){
+        showToast('✅ Все игроки вошли в игру! (' + joined + '/' + alive.length + ')');
+      }
+    });
   });
 }
 
@@ -1825,7 +1882,8 @@ async function joinGameFirebase(){
   if(!num) { showWarn('Введите ваш номер.'); return; }
   if(!name){ showWarn('Введите ваше имя.'); return; }
 
-  const ref = db.ref('games/' + pw + '/players/' + num);
+  const gameId = buildGameId(pw);
+  const ref = db.ref('games/' + gameId + '/players/' + num);
   let snap;
   try { snap = await ref.once('value'); } catch(e){ showWarn('Ошибка соединения.'); return; }
 
@@ -1836,14 +1894,40 @@ async function joinGameFirebase(){
   // Mark joined + save name
   await ref.update({joined: true, name: name});
 
-  // Show role locally
+  // Load settings from Firebase to build correct role description
+  const gameSnap = await db.ref('games/' + gameId + '/settings').once('value');
+  const gs = gameSnap.val() || {};
+
   const roleKey = data.role;
-  // We need ROLES_DEF — it's in the same file
   const rd = getRoleDef(roleKey);
-  document.getElementById('rr-icon').textContent  = rd.icon;
-  document.getElementById('rr-name').textContent  = rd.name;
-  document.getElementById('rr-team').textContent  = {mafia:'⚫ Команда: Мафия',yakuza:'🟣 Команда: Якудза',neutral:'🟡 Нейтральный',town:'🔴 Команда: Мирный город'}[rd.team]||'';
-  document.getElementById('rr-desc').textContent  = rd.desc||'';
+  document.getElementById('rr-icon').textContent = rd.icon;
+  document.getElementById('rr-name').textContent = rd.name;
+  document.getElementById('rr-team').textContent = {mafia:'⚫ Команда: Мафия',yakuza:'🟣 Команда: Якудза',neutral:'🟡 Нейтральный',town:'🔴 Команда: Мирный город'}[rd.team]||'';
+
+  // Build role-specific description with actual game settings
+  let desc = rd.desc || '';
+  if(roleKey === 'doctor'){
+    const modes = ['Может лечить себя без ограничений.','Нельзя лечить одного и того же дважды подряд.','Себя можно вылечить только один раз за игру, других — нельзя повторно.'];
+    desc = 'Защищает игрока от любого выстрела. ' + (modes[gs.doctorMode] || modes[1]);
+  } else if(roleKey === 'beauty'){
+    const selfRule = gs.beautySelf ? 'Может ходить к себе.' : 'Не может ходить к себе.';
+    const repeatRule = gs.beautyRepeat ? 'Можно ходить к одному игроку несколько ночей подряд.' : 'Нельзя ходить к одному и тому же игроку две ночи подряд.';
+    desc = 'Приходит к игроку ночью. Если к нему идёт стреляющая роль — выживает и молчит весь день. Если стреляют в Красотку — умирает она и тот, к кому она шла. ' + selfRule + ' ' + repeatRule;
+  } else if(roleKey === 'maniac'){
+    const manModes=['Показываюсь красным пока жива мафия/якудза, после их гибели — чёрным.','Всегда показываюсь чёрным на всех проверках.'];
+    desc='Играю сам за себя. Не могу отказаться от выстрела. Выигрываю 1 на 1 с нестреляющим. '+(manModes[gs.maniacMode||0]||manModes[0]);
+  } else if(roleKey === 'priest'){
+    const priModes=['Режим: проверяю всех как Шериф. Если нахожу Маньяка — умираю молча.','Режим: ищу только Маньяка. Нашёл — умираю молча.'];
+    desc='Ищу Маньяка ночью. При нахождении умираю молча — ведущий объявляет утром. На прощальной речи могу по своему выбору сказать в стол кого нашёл. '+(priModes[gs.priestMode!==undefined?gs.priestMode:1]||priModes[1]);
+  } else if(roleKey === 'ripper'){
+    const ripMode = gs.ripperMode === 0 ? 'Если пошёл к обывателю — умирает сам.' : 'Если пошёл к обывателю — ничего не происходит.';
+    desc = 'Убивает активные роли ночью. Доктор сильнее. ' + ripMode;
+  } else if(roleKey === 'detective'){
+    const detMode = gs.detDiesAny ? 'Погибает при выстреле в любого.' : 'Погибает только при выстреле в красного.';
+    desc = 'Стреляет или проверяет — на выбор. ' + detMode;
+  }
+
+  document.getElementById('rr-desc').textContent = desc;
   const rrPlayer = document.getElementById('rr-player-info');
   if(rrPlayer) rrPlayer.textContent = 'Игрок #' + num + ' — ' + name;
   showScreen('screen-role-reveal');

@@ -1502,7 +1502,7 @@ function finishNight(){
 
   // Silent counter = only this night's beauty targets (not cumulative)
   updateStats();
-
+}                    // ← добавить эту строку
   let html=`<div class="nri-section">📢 Объявить игрокам утром</div>`;
   if(announceResults.length)announceResults.forEach(r=>html+=`<div class="nri"><div class="nri-icon">${r.icon}</div><div class="nri-text">${r.text}</div></div>`);
   else html+=`<div class="nri"><div class="nri-icon">🌙</div><div class="nri-text">Тихая ночь.</div></div>`;

@@ -444,14 +444,15 @@ html,body{height:100%;width:100%;overflow:hidden;background:var(--bg);color:var(
       <div class="vote-grid" id="vote-out-grid"></div>
       <div id="vote-out-list" class="text-muted mb8">Не выбраны</div>
       <button class="btn btn-danger btn-full" onclick="voteNominated()">Выголосовать отмеченных</button>
+      <div id="vote-result-msg" style="margin-top:8px;font-size:13px;color:var(--red2);font-weight:600;display:none;"></div>
     </div>
     <div class="card">
       <div class="card-title">Управление фазами</div>
-      <button class="btn btn-secondary btn-full mb8" onclick="returnToNightEdit()">↩ Вернуться к правке ночи</button>
-      <div class="row">
-        <button class="btn btn-secondary" style="flex:1" onclick="goNight()">🌙 Следующая ночь</button>
+      <div class="row mb8">
+        <button class="btn btn-secondary" style="flex:1" onclick="returnToNightEdit()">↩ Вернуться к правке ночи</button>
         <button class="btn btn-secondary" style="flex:1" onclick="checkWin()">🏆 Победа?</button>
       </div>
+      <button class="btn btn-secondary btn-full" onclick="goNight()">🌙 Следующая ночь</button>
     </div>
   </div>
   <div id="gtab-log" class="scroll-area" style="display:none">
@@ -609,7 +610,7 @@ html,body{height:100%;width:100%;overflow:hidden;background:var(--bg);color:var(
 // ===== ROLE DEFINITIONS =====
 const ROLES_DEF={
   mafia:    {name:'Мафия',      icon:'🔫',team:'mafia',  shoots:true, badge:'rb-mafia',
-    desc:'Просыпается ночью, стреляет в любого. Самострел — предупреждение. Несострел если не договорились. Последнее слово — за Доном (если озвучено ведущим).'},
+    desc:'Мафия ✅ просыпается ночью только по команде ведущего. За отведённое ведущим время мафиози единогласно (показывая на пальцах) выбирают любую жертву и стреляют в любого игрока. Если стреляют в себя — это самострел (один из мафиози может сознательно устроить самострел как самопожертвование). Если мафия за отведённое ведущим время не договорилась (не выбрала жертву), ведущий фиксирует несострел и укладывает мафию спать. Либо по решению ведущего последнее слово на отстреле может быть за доном.'},
   don:      {name:'Дон',        icon:'🎩',team:'mafia',  shoots:true, badge:'rb-don',
     desc:'Просыпается с мафией, затем отдельно ищет Шерифа. Последнее слово при выстреле мафии.'},
   yakuza:   {name:'Якудза',     icon:'⚔️',team:'yakuza', shoots:true, badge:'rb-yakuza',
@@ -887,6 +888,11 @@ function doStartGame(){
   updateStats();renderPlayerList();
   showScreen('screen-game');
   saveState();
+  // Invalidate any previous game with same password so old session tokens stop working
+  if(G.playerModeActive&&G.password){
+    const oldId=buildGameId(G.password);
+    db.ref('games/'+oldId+'/active').set(false).catch(()=>{});
+  }
   fbPublishGame();
   goNight();
 }
@@ -981,6 +987,18 @@ function toggleSilent(num){const p=getPlayer(num);if(!p)return;p.silent=!p.silen
 
 // ===== NIGHT =====
 function goNight(){
+  // Auto-check win before starting next night
+  const aliveN=G.players.filter(p=>p.alive);
+  const mafN=aliveN.filter(p=>['mafia','don'].includes(p.role));
+  const yakN=aliveN.filter(p=>p.role==='yakuza');
+  const manN=aliveN.filter(p=>p.role==='maniac');
+  const townN=aliveN.filter(p=>getRoleDef(p.role).team==='town');
+  let wn=null;
+  if(!mafN.length&&!yakN.length&&!manN.length)wn='town';
+  else if(mafN.length&&mafN.length>=townN.length+yakN.length+manN.length)wn='mafia';
+  else if(yakN.length&&!mafN.length&&yakN.length>=townN.length+manN.length)wn='yakuza';
+  else if(manN.length===1&&aliveN.length===2){const o=aliveN.find(p=>p.role!=='maniac');if(o&&!getRoleDef(o.role).shoots)wn='maniac';}
+  if(wn){const wd={town:{icon:'🏛️',title:'Мирный город победил!',sub:'Все угрозы устранены.'},mafia:{icon:'🔫',title:'Мафия победила!',sub:'Город под контролем.'},yakuza:{icon:'⚔️',title:'Якудза победила!',sub:'Японский клан захватил власть.'},maniac:{icon:'🔪',title:'Маньяк победил!',sub:'Последний выживший.'}}[wn];document.getElementById('win-icon').textContent=wd.icon;document.getElementById('win-title').textContent=wd.title;document.getElementById('win-sub').textContent=wd.sub;addLog('info',`🏆 ${wd.title}`);saveToHistory();localStorage.removeItem(SAVE_KEY);showScreen('screen-win');return;}
   G.nightNum++;G.nightActions={};G.phase='night';
   G.players.forEach(p=>{if(p.alive){p.silent=false;p.immune=false;p.nominated=false;p.voteOut=false;}});
   G.nominationOrder=[];G.voteOutOrder=[];
@@ -1186,6 +1204,7 @@ function finishNight(){
 
   // Check beauty validity
   let beautyValid=false,beautyNum=getPlayerNumByRole('beauty');
+  G._beautyLastTargetBeforeNight=G.beautyLastTarget; // save for returnToNightEdit
   if(beautyTarget>0){
     const ok=!(!G.settings.beautySelf&&beautyNum&&beautyTarget===beautyNum)&&!(!G.settings.beautyRepeat&&G.beautyLastTarget===beautyTarget);
     if(ok){beautyValid=true;G.beautyLastTarget=beautyTarget;const bp=getPlayer(beautyTarget);if(bp&&bp.alive)bp.actions.push(`Ночь ${G.nightNum}: Красотка пришла`);}
@@ -1415,7 +1434,8 @@ function finishNight(){
     if(on&&has)roleSummary.push(r);
   });
 
-  G.nightResults={announceResults,privateResults,roleSummary,nightNum:G.nightNum};
+  G.nightResults={announceResults,privateResults,roleSummary,nightNum:G.nightNum,
+    beautyInfo:beautyTarget>0&&beautyValid?`Красотка ходила к игроку #${beautyTarget} ${getPlayer(beautyTarget)?.name||''}`:null};
   addLog('night',`Итоги ночи ${G.nightNum}: убито ${killed.size}`);
 
   // Silent counter = only this night's beauty targets (not cumulative)
@@ -1435,7 +1455,13 @@ function finishNight(){
   saveState();
 }
 
-function returnToNightEdit(){G.phase='night';document.getElementById('game-phase-title').textContent=`Ночь ${G.nightNum}`;switchGameTab('night');}
+function returnToNightEdit(){
+  G.phase='night';
+  // Restore beautyLastTarget to what it was BEFORE this night (so re-edit doesn't block same target)
+  if(G._beautyLastTargetBeforeNight!==undefined) G.beautyLastTarget=G._beautyLastTargetBeforeNight;
+  document.getElementById('game-phase-title').textContent=`Ночь ${G.nightNum}`;
+  switchGameTab('night');
+}
 
 // ===== DAY =====
 function goDay(){
@@ -1455,6 +1481,11 @@ function buildDaySummary(){
   let h=`<div class="card"><div class="card-title">📢 Объявить игрокам — итоги ночи ${G.nightResults.nightNum}</div>`;
   if(G.nightResults.announceResults.length)G.nightResults.announceResults.forEach(r=>h+=`<div class="nri"><div class="nri-icon">${r.icon}</div><div class="nri-text">${r.text}</div></div>`);
   else h+=`<div class="text-muted">Тихая ночь.</div>`;
+  // Beauty visit info
+  if(G.nightResults.beautyInfo){h+=`<div class="nri"><div class="nri-icon">💋</div><div class="nri-text">${G.nightResults.beautyInfo}</div></div>`;}
+  // Silent count
+  const silentPlayers=G.players.filter(p=>p.alive&&p.silent);
+  if(silentPlayers.length){h+=`<div class="alert-box alert-info" style="margin-top:8px;">🤫 Молчат сегодня (${silentPlayers.length}): ${silentPlayers.map(p=>`<strong>#${p.num}</strong>`).join(', ')}</div>`;}
   // Show judge immunity info
   const immunePlayers=G.players.filter(p=>p.alive&&p.immune);
   if(immunePlayers.length){
@@ -1511,14 +1542,30 @@ function updateVoteOutList(){
 function voteNominated(){
   const toVote=(G.voteOutOrder||[]).map(n=>getPlayer(n)).filter(p=>p&&p.voteOut&&p.alive);
   if(!toVote.length){showWarn('Не выбраны игроки для выголосования (отметьте в нижней сетке).');return;}
+  const votedNames=[];
   toVote.forEach(p=>{
     if(p.immune){showToast(`⚖️ #${p.num} ${p.name} — иммунитет Судьи! Нельзя выголосовать.`);p.voteOut=false;p.nominated=false;addLog('day',`⚖️ #${p.num} ${p.name} защищён Судьёй — выголосование отменено`);return;}
     p.alive=false;p.voted=true;p.nominated=false;p.voteOut=false;
+    votedNames.push(`#${p.num} ${p.name} (${getRoleDef(p.role).name})`);
     addLog('day',`🗳 #${p.num} ${p.name} (${getRoleDef(p.role).name}) выголосован`);
   });
   G.nominationOrder=G.nominationOrder.filter(n=>getPlayer(n)?.alive);
   G.voteOutOrder=[];
   updateStats();renderPlayerList();buildVoteGrid();saveState();
+  const msgEl=document.getElementById('vote-result-msg');
+  if(msgEl&&votedNames.length){msgEl.style.display='';msgEl.innerHTML='🗳 Выголосованы: '+votedNames.join(', ');}
+  // Auto check win after vote
+  const alive=G.players.filter(p=>p.alive);
+  const maf=alive.filter(p=>['mafia','don'].includes(p.role));
+  const yak=alive.filter(p=>p.role==='yakuza');
+  const man=alive.filter(p=>p.role==='maniac');
+  const town=alive.filter(p=>getRoleDef(p.role).team==='town');
+  let w=null;
+  if(!maf.length&&!yak.length&&!man.length)w='town';
+  else if(maf.length&&maf.length>=town.length+yak.length+man.length)w='mafia';
+  else if(yak.length&&!maf.length&&yak.length>=town.length+man.length)w='yakuza';
+  else if(man.length===1&&alive.length===2){const o=alive.find(p=>p.role!=='maniac');if(o&&!getRoleDef(o.role).shoots)w='maniac';}
+  if(w){const wd={town:{icon:'🏛️',title:'Мирный город победил!',sub:'Все угрозы устранены.'},mafia:{icon:'🔫',title:'Мафия победила!',sub:'Город под контролем.'},yakuza:{icon:'⚔️',title:'Якудза победила!',sub:'Японский клан захватил власть.'},maniac:{icon:'🔪',title:'Маньяк победил!',sub:'Последний выживший.'}}[w];document.getElementById('win-icon').textContent=wd.icon;document.getElementById('win-title').textContent=wd.title;document.getElementById('win-sub').textContent=wd.sub;addLog('info',`🏆 ${wd.title}`);saveToHistory();localStorage.removeItem(SAVE_KEY);showScreen('screen-win');}
 }
 
 // ===== DAY TIMERS =====
@@ -1564,7 +1611,8 @@ function addLog(type,msg){
 }
 function clearLog(){G.log=[];document.getElementById('game-log').innerHTML='';}
 function exportReport(){
-  const lines=[`МАФИЯ — ОТЧЁТ`,`Дата: ${new Date().toLocaleString('ru')}`,`Игроков: ${G.players.length} | Ночей: ${G.nightNum}`,``,`=== РОЛИ ===`];
+  const gameId=G.password?buildGameId(G.password):'—';
+  const lines=[`МАФИЯ — ОТЧЁТ`,`Дата: ${new Date().toLocaleString('ru')}`,`Игроков: ${G.players.length} | Ночей: ${G.nightNum}`,`Пароль игры: ${G.password||'не задан'} | Код: ${gameId}`,``,`=== РОЛИ ===`];
   G.players.forEach(p=>{const rd=getRoleDef(p.role);lines.push(`#${p.num} ${p.name} — ${rd.name} (${p.alive?'жив':p.voted?'выгол.':'убит'})`)});
   lines.push('','=== ЖУРНАЛ ===');G.log.forEach(e=>lines.push(`[${e.time}] ${e.msg}`));
   const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([lines.join('\n')],{type:'text/plain;charset=utf-8'}));a.download=`mafia_${Date.now()}.txt`;a.click();
@@ -1888,6 +1936,12 @@ async function joinGameFirebase(){
   try { snap = await ref.once('value'); } catch(e){ showWarn('Ошибка соединения.'); return; }
 
   if(!snap.exists()){ showWarn('Игра не найдена или неверный пароль.'); return; }
+
+  // Check if game is still active (new game with same password invalidates old sessions)
+  let activeSnap;
+  try { activeSnap = await db.ref('games/' + gameId + '/active').once('value'); } catch(e){}
+  if(activeSnap && activeSnap.val()===false){ showWarn('Игра по этому паролю уже завершена. Попросите ведущего выдать новый пароль.'); return; }
+
   const data = snap.val();
   if(data.joined){ showWarn('Этот номер уже занят. Вы уже входили?'); return; }
 

@@ -1550,6 +1550,9 @@ function goDay(){
   // Очистить отметки вотаут с прошлого дня
   G.players.forEach(p=>{p.nominated=false;p.voteOut=false;});
   G.nominationOrder=[];G.voteOutOrder=[];
+  // Очистить сообщение о выголосовании
+  const msgEl=document.getElementById('vote-result-msg');
+  if(msgEl){msgEl.style.display='none';msgEl.innerHTML='';}
   document.getElementById('game-phase-title').textContent=`День ${G.dayNum}`;
   document.getElementById('game-phase-sub').textContent='Обсуждение — голосование';
   addLog('day',`☀️ === ДЕНЬ ${G.dayNum} ===`);
@@ -1744,30 +1747,37 @@ function toggleMusic(){
   const hbtn=document.getElementById('hdr-music-btn'),mbtn=document.getElementById('music-btn');
   if(musicPlaying){
     // Pause
-    if(customAudio){try{customAudio.pause();}catch(e){}}
-    else{try{if(musicGain)musicGain.gain.value=0;}catch(e){}}
+    try{if(customAudio)customAudio.pause();}catch(e){}
+    try{if(musicGain)musicGain.gain.value=0;}catch(e){}
     musicPlaying=false;musicPaused=true;
     if(mbtn)mbtn.textContent='▶ Продолжить';
     if(hbtn){hbtn.textContent='⏸';hbtn.style.color='var(--text2)';}
   } else if(musicPaused){
-    // Resume from pause
-    if(customAudio){try{customAudio.play().catch(()=>{});}catch(e){}}
-    else{try{if(musicGain)musicGain.gain.value=(G.settings.musicVolume||20)/500;}catch(e){}}
+    // Resume
+    try{if(customAudio)customAudio.play().catch(()=>{});}catch(e){}
+    try{if(musicGain)musicGain.gain.value=(G.settings.musicVolume||20)/500;}catch(e){}
     musicPlaying=true;musicPaused=false;
     if(mbtn)mbtn.textContent='⏸ Пауза';
     if(hbtn){hbtn.textContent='🎵';hbtn.style.color='var(--accent)';}
   } else {
     // Start fresh
-    if(customAudio&&musicTrack===99){try{customAudio.play().catch(()=>{});}catch(e){}}
+    stopAllAudio();
+    if(_playlist.length&&musicTrack===99){try{customAudio.play().catch(()=>{});}catch(e){}}
     else{try{playAmbient();}catch(e){}}
     musicPlaying=true;musicPaused=false;
     if(mbtn)mbtn.textContent='⏸ Пауза';
     if(hbtn){hbtn.textContent='🎵';hbtn.style.color='var(--accent)';}
   }
 }
+function stopAllAudio(){
+  // Stop oscillators
+  try{_oscillators.forEach(o=>{try{o.stop();}catch(e){}});_oscillators=[];}catch(e){}
+  try{if(musicGain){musicGain.disconnect();musicGain=null;}}catch(e){}
+  // Stop custom audio
+  try{if(customAudio){customAudio.pause();customAudio.currentTime=0;}}catch(e){}
+}
 function stopMusic(){
-  if(customAudio){try{customAudio.pause();customAudio.currentTime=0;}catch(e){}}
-  else{try{if(musicGain){musicGain.disconnect();musicGain=null;}}catch(e){}}
+  stopAllAudio();
   musicPlaying=false;musicPaused=false;
   const hbtn=document.getElementById('hdr-music-btn'),mbtn=document.getElementById('music-btn');
   if(mbtn)mbtn.textContent='▶ Включить';
@@ -1852,16 +1862,15 @@ function _loadPlaylistTrack(idx){
 }
 
 function nextPlaylistTrack(){
+  const wasPlaying=musicPlaying;
+  stopAllAudio();
   if(_playlist.length>1){
     _loadPlaylistTrack(_playlistIdx+1);
-    if(musicPlaying){try{customAudio.play().catch(()=>{});}catch(e){}}
+    if(wasPlaying){try{customAudio.play().catch(()=>{});}catch(e){}}
   } else {
-    // Switch built-in ambient tracks
-    const wasPlaying=musicPlaying;
-    if(musicPlaying){try{if(musicGain)musicGain.disconnect();}catch(e){}}
     musicTrack=(musicTrack===99?0:(musicTrack+1)%3);
-    selectTrack(musicTrack);
-    if(wasPlaying&&musicTrack!==99){try{playAmbient();}catch(e){}}
+    [0,1,2].forEach(j=>{const el=document.getElementById('trk-'+j);if(el)el.className=j===musicTrack?'btn btn-primary btn-sm':'btn btn-secondary btn-sm';});
+    if(wasPlaying){try{playAmbient();}catch(e){}}
   }
 }
 

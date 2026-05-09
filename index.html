@@ -183,7 +183,7 @@ html,body{height:100%;min-height:-webkit-fill-available;width:100%;overflow:hidd
 
 <!-- MENU -->
 <div id="screen-menu" class="screen active">
-  <div class="menu-logo"><h1>МАФИЯ</h1><p>Режим ведущего</p><p style="font-size:10px;color:var(--text3);margin-top:4px;letter-spacing:1px;">v2.3</p></div>
+  <div class="menu-logo"><h1>МАФИЯ</h1><p>Режим ведущего</p><p style="font-size:10px;color:var(--text3);margin-top:4px;letter-spacing:1px;">v2.4</p></div>
   <div class="menu-btns">
     <button class="btn-menu primary" onclick="showSetup()">🎮 Новая игра</button>
     <button class="btn-menu" id="menu-join-btn" onclick="showScreen('screen-join')">👤 Войти игроком</button>
@@ -971,15 +971,19 @@ function updateStats(){
 
 function killPlayer(num){
   const p=getPlayer(num);if(!p||!p.alive)return;
+  if(!confirm(`Убить #${p.num} ${p.name}?`))return;
   p.alive=false;p.silent=false;p.immune=false;p.nominated=false;p.voteOut=false;
-  addLog('death',`💀 #${p.num} ${p.name} (${getRoleDef(p.role).name}) убит`);
+  addLog('death',`💀 #${p.num} ${p.name} (${getRoleDef(p.role).name}) умерщвлён ведущим`);
   updateStats();renderPlayerList();refreshPhaseUI();saveState();
+  showToast(`#${p.num} ${p.name} убит`);
 }
 function revivePlayer(num){
   const p=getPlayer(num);if(!p||p.alive)return;
-  p.alive=true;p.voted=false;
-  addLog('info',`✚ #${p.num} ${p.name} воскрешён`);
+  if(!confirm(`Оживить #${p.num} ${p.name}?`))return;
+  p.alive=true;p.voted=false;p.voteOut=false;
+  addLog('info',`✚ #${p.num} ${p.name} (${getRoleDef(p.role).name}) оживлён ведущим`);
   updateStats();renderPlayerList();refreshPhaseUI();saveState();
+  showToast(`#${p.num} ${p.name} оживлён`);
 }
 function refreshPhaseUI(){
   if(G.phase==='night'){renderNightSteps();}
@@ -1755,6 +1759,7 @@ function joinGame(){
   const p=G.players.find(p=>p.num===num);if(!p){showWarn(`Игрок #${num} не найден. Проверьте номер.`);return;}
   p.name=name;savePlayerNames();
   renderPlayerList();updateStats();
+  p.roleViewed=true;// флаг — игрок увидел свою роль
   const rd=getRoleDef(p.role);
   document.getElementById('rr-icon').textContent=rd.icon;
   document.getElementById('rr-name').textContent=rd.name;
@@ -2017,8 +2022,31 @@ function showRules(){
 // ===== SETTINGS =====
 let _settingsCalledFromGame=false;
 function showSettings(){_settingsCalledFromGame=false;applyToggleUI();showScreen('screen-settings');}
-function showSettingsInGame(){_settingsCalledFromGame=true;applyToggleUI();showScreen('screen-settings');}
-function closeSettings(){showScreen(_settingsCalledFromGame?'screen-game':'screen-menu');}
+function showSettingsInGame(){
+  _settingsCalledFromGame=true;
+  // Открываем setup с настройками ролей и музыки, скрывая лишние блоки
+  renderRoleToggles();applyModeUI();applyDoctorModeUI();applyRipperModeUI();applyToggleUI();
+  setManiacMode(G.settings.maniacMode||0);setPriestMode(G.settings.priestMode!==undefined?G.settings.priestMode:1);setDocStrength(G.settings.docStrength||0);
+  // Скрыть блоки только для подготовки
+  document.getElementById('setup-players')&&(document.getElementById('setup-players').style.display='none');
+  document.getElementById('setup-roles')&&(document.getElementById('setup-roles').style.display='none');
+  // Показать только настройки
+  const settingsTab=document.getElementById('setup-settings');
+  if(settingsTab)settingsTab.style.display='block';
+  // Обновить кнопки вкладок
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  showScreen('screen-setup');
+}
+function closeSettings(){
+  if(_settingsCalledFromGame){
+    // Восстановить нормальный вид setup
+    document.getElementById('setup-players')&&(document.getElementById('setup-players').style.display='');
+    document.getElementById('setup-roles')&&(document.getElementById('setup-roles').style.display='');
+    showScreen('screen-game');
+  } else {
+    showScreen('screen-menu');
+  }
+}
 
 // ===== NOTES =====
 function showNotes(){document.getElementById('notes-text').value=G.notes;openModal('modal-notes');}
@@ -2209,17 +2237,30 @@ async function markRemembered(btn){
 
 // Ведущий: проверить кто не нажал Запомнил
 async function checkPlayersJoined(){
-  if(!G._gameId){showWarn('Режим входа игроков не активен.');return;}
-  const snap=await db.ref('games/'+G._gameId+'/players').once('value');
-  const all=snap.val();
-  if(!all){showWarn('Нет данных о игроках.');return;}
-  const notRemembered=G.players.filter(p=>p.alive&&(!all[p.num]||!all[p.num].remembered)).map(p=>`#${p.num} ${p.name}`);
-  const remembered=G.players.filter(p=>p.alive&&all[p.num]&&all[p.num].remembered).map(p=>`#${p.num} ${p.name}`);
-  if(notRemembered.length===0){
-    showWarn(`✅ Все ${remembered.length} игроков нажали «Запомнил»!`);
-  } else {
-    showWarn(`🔍 Ещё не нажали «Запомнил» (${notRemembered.length}):<br><br><strong>${notRemembered.join('<br>')}</strong><br><br>Нажали (${remembered.length}): ${remembered.join(', ')}`);
+  // Локальный режим — проверяем по флагу roleViewed на игроках
+  if(!G._gameId){
+    const notViewed=G.players.filter(p=>!p.roleViewed).map(p=>`#${p.num} ${p.name}`);
+    const viewed=G.players.filter(p=>p.roleViewed).map(p=>`#${p.num} ${p.name}`);
+    if(notViewed.length===0){
+      showWarn(`✅ Все ${viewed.length} игроков нажали «Запомнил»!`);
+    } else {
+      showWarn(`🔍 Ещё не нажали «Запомнил» (${notViewed.length}):<br><br><strong>${notViewed.join('<br>')}</strong><br><br>Нажали (${viewed.length}): ${viewed.join(', ')}`);
+    }
+    return;
   }
+  // Firebase режим
+  try{
+    const snap=await db.ref('games/'+G._gameId+'/players').once('value');
+    const all=snap.val();
+    if(!all){showWarn('Нет данных о игроках.');return;}
+    const notRemembered=G.players.filter(p=>(!all[p.num]||!all[p.num].remembered)).map(p=>`#${p.num} ${p.name}`);
+    const remembered=G.players.filter(p=>all[p.num]&&all[p.num].remembered).map(p=>`#${p.num} ${p.name}`);
+    if(notRemembered.length===0){
+      showWarn(`✅ Все ${remembered.length} игроков нажали «Запомнил»!`);
+    } else {
+      showWarn(`🔍 Ещё не нажали «Запомнил» (${notRemembered.length}):<br><br><strong>${notRemembered.join('<br>')}</strong><br><br>Нажали (${remembered.length}): ${remembered.join(', ')}`);
+    }
+  }catch(e){showWarn('Ошибка Firebase: '+e.message);}
 }
 
 

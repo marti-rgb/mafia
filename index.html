@@ -183,7 +183,7 @@ html,body{height:100%;min-height:-webkit-fill-available;width:100%;overflow:hidd
 
 <!-- MENU -->
 <div id="screen-menu" class="screen active">
-  <div class="menu-logo"><h1>МАФИЯ</h1><p>Режим ведущего</p><p style="font-size:10px;color:var(--text3);margin-top:4px;letter-spacing:1px;">v2.4</p></div>
+  <div class="menu-logo"><h1>МАФИЯ</h1><p>Режим ведущего</p><p style="font-size:10px;color:var(--text3);margin-top:4px;letter-spacing:1px;">v2.5</p></div>
   <div class="menu-btns">
     <button class="btn-menu primary" onclick="showSetup()">🎮 Новая игра</button>
     <button class="btn-menu" id="menu-join-btn" onclick="showScreen('screen-join')">👤 Войти игроком</button>
@@ -424,6 +424,7 @@ html,body{height:100%;min-height:-webkit-fill-available;width:100%;overflow:hidd
     <div id="night-summary-day"></div>
     <div class="card">
       <div class="card-title">⏱ Таймеры дня</div>
+      <div id="day-player-roles" style="font-size:11px;color:var(--text2);margin-bottom:8px;line-height:1.7;"></div>
       <div style="display:flex;gap:8px;margin-bottom:8px;">
         <div style="flex:1;text-align:center;">
           <div style="font-size:10px;color:var(--text2);margin-bottom:3px;">РЕЧЬ ИГРОКА</div>
@@ -1593,6 +1594,12 @@ function goDay(){
 }
 
 function buildDaySummary(){
+  // Обновить строку игроки-роли перед таймерами
+  const prEl=document.getElementById('day-player-roles');
+  if(prEl){
+    const alive=G.players.filter(p=>p.alive);
+    prEl.innerHTML=alive.map(p=>{const rd=getRoleDef(p.role);return`<span style="margin-right:10px;white-space:nowrap;">${rd.icon} <strong>#${p.num}</strong> ${p.name}<span style="color:var(--text3);font-size:10px;"> ${rd.name}</span>${p.silent?'🤫':''}</span>`;}).join('');
+  }
   const el=document.getElementById('night-summary-day');if(!el)return;
   if(!G.nightResults){el.innerHTML='';return;}
   let h=`<div class="card"><div class="card-title">📢 Объявить игрокам — итоги ночи ${G.nightResults.nightNum}</div>`;
@@ -2009,7 +2016,7 @@ function showRules(){
     if(k==='maniac'){const manModes=['Показываюсь красным пока жива мафия/якудза, после их гибели — чёрным.','Всегда показываюсь чёрным на всех проверках.'];return'Играю сам за себя. Не могу отказаться от выстрела. Выигрываю 1 на 1 с нестреляющим. '+(manModes[gs.maniacMode||0]||manModes[0]);}
     if(k==='priest'){const priModes=['Режим: проверяю всех как Шериф. Если нахожу Маньяка — умираю молча.','Режим: ищу только Маньяка. Нашёл — умираю молча.'];return'Ищу Маньяка ночью. При нахождении умираю молча — ведущий объявляет утром. '+(priModes[gs.priestMode!==undefined?gs.priestMode:1]||priModes[1]);}
     if(k==='ripper'){const ripMode=gs.ripperMode===0?'Если пошёл к обывателю — умирает сам.':'Если пошёл к обывателю — ничего не происходит.';return'Убивает активные роли ночью. Доктор сильнее. '+ripMode;}
-    if(k==='detective'){const detMode=gs.detDiesAny?'Погибает при выстреле в любого.':'Погибает только при выстреле в красного.';return'Стреляет или проверяет — на выбор. '+detMode;}
+    if(k==='detective'){const detMode=gs.detDiesAny?'Погибает при выстреле в любого.':'Погибает только при выстреле в красного — вместе с отстреленным красным.';return'Стреляет или проверяет — на выбор. '+detMode;}
     return rd.desc||'';
   }
   const header=gameActive
@@ -2319,7 +2326,7 @@ async function joinGameFirebase(){
     const ripMode = gs.ripperMode === 0 ? 'Если пошёл к обывателю — умирает сам.' : 'Если пошёл к обывателю — ничего не происходит.';
     desc = 'Убивает активные роли ночью. Доктор сильнее. ' + ripMode;
   } else if(roleKey === 'detective'){
-    const detMode = gs.detDiesAny ? 'Погибает при выстреле в любого.' : 'Погибает только при выстреле в красного.';
+    const detMode = gs.detDiesAny ? 'Погибает при выстреле в любого вместе с отстреленным.' : 'Погибает только при выстреле в красного — вместе с отстреленным красным.';
     desc = 'Стреляет или проверяет — на выбор. ' + detMode;
   }
 

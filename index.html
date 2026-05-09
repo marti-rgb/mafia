@@ -183,7 +183,7 @@ html,body{height:100%;min-height:-webkit-fill-available;width:100%;overflow:hidd
 
 <!-- MENU -->
 <div id="screen-menu" class="screen active">
-  <div class="menu-logo"><h1>МАФИЯ</h1><p>Режим ведущего</p><p style="font-size:10px;color:var(--text3);margin-top:4px;letter-spacing:1px;">v2.2</p></div>
+  <div class="menu-logo"><h1>МАФИЯ</h1><p>Режим ведущего</p><p style="font-size:10px;color:var(--text3);margin-top:4px;letter-spacing:1px;">v2.3</p></div>
   <div class="menu-btns">
     <button class="btn-menu primary" onclick="showSetup()">🎮 Новая игра</button>
     <button class="btn-menu" id="menu-join-btn" onclick="showScreen('screen-join')">👤 Войти игроком</button>
@@ -295,6 +295,11 @@ html,body{height:100%;min-height:-webkit-fill-available;width:100%;overflow:hidd
         <button class="btn btn-secondary" id="dmode-0" onclick="setDoctorMode(0)">Без ограничений</button>
         <button class="btn btn-primary" id="dmode-1" onclick="setDoctorMode(1)">Ко всем через раз (вкл. себя)</button>
         <button class="btn btn-secondary" id="dmode-2" onclick="setDoctorMode(2)">Через раз, к себе только 1 раз</button>
+      </div>
+      <div class="card-title" style="margin-top:12px;">Сила защиты</div>
+      <div style="display:flex;flex-direction:column;gap:6px;">
+        <button class="btn btn-primary" id="doc-strength-0" onclick="setDocStrength(0)">Спасает всегда (от всех стрелков)</button>
+        <button class="btn btn-secondary" id="doc-strength-1" onclick="setDocStrength(1)">Только от одной смерти (2+ стрелка — не спасает)</button>
       </div>
     </div>
     <div class="card">
@@ -654,7 +659,7 @@ let G={
   phase:'menu',nightNum:0,dayNum:0,
   players:[],log:[],nightActions:{},nightResults:null,
   settings:{
-    beautySelf:false,beautyRepeat:true,doctorMode:1,ripperMode:1,
+    beautySelf:false,beautyRepeat:true,doctorMode:1,docStrength:0,ripperMode:1,
     detDiesAny:false,maniacMode:0,priestMode:1,showRoles:true,nightMusicAuto:true,musicMode:'auto',
     filterManual:false,musicVolume:20,alarmRepeats:3,musicTrack:0
   },
@@ -690,7 +695,7 @@ function simTab(name,el){
 
 // ===== SETUP =====
 let assignMode='auto';
-function showSetup(){renderRoleToggles();updateSetupPreview();applyModeUI();applyDoctorModeUI();applyRipperModeUI();applyToggleUI();setManiacMode(G.settings.maniacMode||0);setPriestMode(G.settings.priestMode!==undefined?G.settings.priestMode:1);showScreen('screen-setup');}
+function showSetup(){renderRoleToggles();updateSetupPreview();applyModeUI();applyDoctorModeUI();applyRipperModeUI();applyToggleUI();setManiacMode(G.settings.maniacMode||0);setPriestMode(G.settings.priestMode!==undefined?G.settings.priestMode:1);setDocStrength(G.settings.docStrength||0);showScreen('screen-setup');}
 
 function setAssignMode(m){
   assignMode=m;
@@ -769,6 +774,7 @@ function applyToggleUI(){
 }
 function setDoctorMode(m){G.settings.doctorMode=m;applyDoctorModeUI();}
 function applyDoctorModeUI(){[0,1,2].forEach(i=>{const el=document.getElementById('dmode-'+i);if(el){el.className=G.settings.doctorMode===i?'btn btn-primary':'btn btn-secondary';}});}
+function setDocStrength(m){G.settings.docStrength=m;[0,1].forEach(i=>{const el=document.getElementById('doc-strength-'+i);if(el)el.className=G.settings.docStrength===i?'btn btn-primary':'btn btn-secondary';});}
 function setRipperMode(m){G.settings.ripperMode=m;applyRipperModeUI();}
 function applyRipperModeUI(){[0,1].forEach(i=>{const el=document.getElementById('rmode-'+i);if(el){el.className=G.settings.ripperMode===i?'btn btn-primary':'btn btn-secondary';}});}
 function setManiacMode(m){G.settings.maniacMode=m;[0,1].forEach(i=>{const el=document.getElementById('maniac-mode-'+i);if(el)el.className=G.settings.maniacMode===i?'btn btn-primary':'btn btn-secondary';});}
@@ -1269,13 +1275,30 @@ function finishNight(){
   // Judge
   if(judgeTarget>0){const jp=getPlayer(judgeTarget);if(jp&&jp.alive){jp.immune=true;jp.actions.push(`Ночь ${G.nightNum}: иммунитет`);privateResults.push({icon:'⚖️',text:`Судья → иммунитет <strong>#${judgeTarget} ${jp.name}</strong>`});addLog('info',`⚖️ Судья → #${judgeTarget}`);}}
 
+  // Считаем сколько стрелков идут к каждому игроку (для docStrength=1)
+  const shooterCount={};
+  const countShot=(num)=>{if(num>0)shooterCount[num]=(shooterCount[num]||0)+1;};
+  if(mafiaTarget>0)countShot(mafiaTarget);
+  if(yakuzaTarget>0&&G.activeRoles.yakuza)countShot(yakuzaTarget);
+  if(maniacTarget>0&&G.activeRoles.maniac)countShot(maniacTarget);
+  if(ripperTarget>0&&G.activeRoles.ripper)countShot(ripperTarget);
+
   // Shot processor — handles beauty/doctor interactions
   const processShot=(targetNum,shooterLabel,verb='стрелял')=>{
     if(!targetNum||targetNum<0)return;
     const tp=getPlayer(targetNum);
     if(!tp||!tp.alive){announceResults.push({icon:'💨',text:`${shooterLabel} ${verb} в #${targetNum} — уже мёртв.`});return;}
-    // Doctor saves
-    if(saved.has(targetNum)){announceResults.push({icon:'💊',text:`${shooterLabel} ${verb} — никто не погиб (Доктор спас).`});return;}
+    // Doctor saves — с учётом силы защиты
+    if(saved.has(targetNum)){
+      const multiShot=G.settings.docStrength===1&&(shooterCount[targetNum]||0)>1;
+      if(multiShot){
+        // Слабый доктор — не спасает при 2+ стрелках
+        killed.add(targetNum);
+        announceResults.push({icon:'💀',text:`${shooterLabel} ${verb} в <strong>#${targetNum} ${tp.name}</strong> — Доктор защищал, но не смог нейтрализовать несколько угроз.`});
+        return;
+      }
+      announceResults.push({icon:'💊',text:`${shooterLabel} ${verb} — никто не погиб (Доктор спас).`});return;
+    }
 
     // Is beauty alive? Check if we shoot at beauty herself
     const beautyP=G.players.find(p=>p.role==='beauty'&&p.alive);
@@ -1976,7 +1999,7 @@ function showRules(){
   const gs=G.settings;
   const gameActive=G.players.length>0;
   function getRuleDesc(k,rd){
-    if(k==='doctor'){const modes=['Может лечить себя без ограничений.','Нельзя лечить одного и того же дважды подряд.','Себя можно вылечить только один раз за игру, других — нельзя повторно.'];return'Защищает игрока от любого выстрела. '+(modes[gs.doctorMode]||modes[1]);}
+    if(k==='doctor'){const modes=['Может лечить себя без ограничений.','Нельзя лечить одного и того же дважды подряд.','Себя можно вылечить только один раз за игру, других — нельзя повторно.'];const strength=gs.docStrength===1?'Защищает только от одного стрелка — если пришли двое и более, не спасает.':'Спасает от любого количества стрелков.';return'Защищает игрока от выстрела. '+(modes[gs.doctorMode]||modes[1])+' '+strength;}
     if(k==='beauty'){const selfRule=gs.beautySelf?'Может ходить к себе.':'Не может ходить к себе.';const repeatRule=gs.beautyRepeat?'Можно ходить к одному игроку несколько ночей подряд.':'Нельзя ходить к одному и тому же игроку две ночи подряд.';return'Приходит к игроку ночью. Если к нему идёт стреляющая роль — выживает и молчит весь день. Если стреляют в Красотку — умирает она и тот, к кому она шла. '+selfRule+' '+repeatRule;}
     if(k==='maniac'){const manModes=['Показываюсь красным пока жива мафия/якудза, после их гибели — чёрным.','Всегда показываюсь чёрным на всех проверках.'];return'Играю сам за себя. Не могу отказаться от выстрела. Выигрываю 1 на 1 с нестреляющим. '+(manModes[gs.maniacMode||0]||manModes[0]);}
     if(k==='priest'){const priModes=['Режим: проверяю всех как Шериф. Если нахожу Маньяка — умираю молча.','Режим: ищу только Маньяка. Нашёл — умираю молча.'];return'Ищу Маньяка ночью. При нахождении умираю молча — ведущий объявляет утром. '+(priModes[gs.priestMode!==undefined?gs.priestMode:1]||priModes[1]);}

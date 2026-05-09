@@ -183,7 +183,7 @@ html,body{height:100%;width:100%;overflow:hidden;background:var(--bg);color:var(
 
 <!-- MENU -->
 <div id="screen-menu" class="screen active">
-  <div class="menu-logo"><h1>МАФИЯ</h1><p>Режим ведущего</p></div>
+  <div class="menu-logo"><h1>МАФИЯ</h1><p>Режим ведущего</p><p style="font-size:10px;color:var(--text3);margin-top:4px;letter-spacing:1px;">v2.1</p></div>
   <div class="menu-btns">
     <button class="btn-menu primary" onclick="showSetup()">🎮 Новая игра</button>
     <button class="btn-menu" id="menu-join-btn" onclick="showScreen('screen-join')">👤 Войти игроком</button>
@@ -422,7 +422,7 @@ html,body{height:100%;width:100%;overflow:hidden;background:var(--bg);color:var(
       <div style="display:flex;gap:8px;margin-bottom:8px;">
         <div style="flex:1;text-align:center;">
           <div style="font-size:10px;color:var(--text2);margin-bottom:3px;">РЕЧЬ ИГРОКА</div>
-          <div class="timer-display" id="day-t1-disp" style="font-size:26px;padding:2px 0;">1:00</div>
+          <div class="timer-display" id="day-t1-disp" style="font-size:26px;padding:2px 0;">0:30</div>
           <div style="display:flex;gap:3px;flex-wrap:wrap;justify-content:center;margin-top:4px;">
             <span class="timer-preset" style="padding:3px 5px;font-size:10px;" onclick="setDayTimerPreset(1,10)">10с</span>
             <span class="timer-preset" style="padding:3px 5px;font-size:10px;" onclick="setDayTimerPreset(1,20)">20с</span>
@@ -549,6 +549,7 @@ html,body{height:100%;width:100%;overflow:hidden;background:var(--bg);color:var(
     <div id="win-sub" class="win-sub"></div>
     <button class="btn btn-primary mt8" onclick="showScreen('screen-menu')">В главное меню</button>
     <button class="btn btn-secondary mt8" onclick="exportReport()">📄 Экспорт отчёта</button>
+    <button class="btn btn-secondary mt8" style="border-color:var(--red2);color:var(--red2);" onclick="returnToGameFromWin()">↩ Вернуться в игру</button>
   </div>
 </div>
 
@@ -1020,7 +1021,7 @@ function goNight(){
   else if(mafN.length&&mafN.length>=townN.length+yakN.length+manN.length)wn='mafia';
   else if(yakN.length&&!mafN.length&&yakN.length>=townN.length+manN.length)wn='yakuza';
   else if(manN.length===1&&aliveN.length===2){const o=aliveN.find(p=>p.role!=='maniac');if(o&&!getRoleDef(o.role).shoots)wn='maniac';}
-  if(wn){const wd={town:{icon:'🏛️',title:'Мирный город победил!',sub:'Все угрозы устранены.'},mafia:{icon:'🔫',title:'Мафия победила!',sub:'Город под контролем.'},yakuza:{icon:'⚔️',title:'Якудза победила!',sub:'Японский клан захватил власть.'},maniac:{icon:'🔪',title:'Маньяк победил!',sub:'Последний выживший.'}}[wn];document.getElementById('win-icon').textContent=wd.icon;document.getElementById('win-title').textContent=wd.title;document.getElementById('win-sub').textContent=wd.sub;addLog('info',`🏆 ${wd.title}`);saveToHistory();localStorage.removeItem(SAVE_KEY);showScreen('screen-win');return;}
+  if(wn&&!G.manualWinOnly){const wd={town:{icon:'🏛️',title:'Мирный город победил!',sub:'Все угрозы устранены.'},mafia:{icon:'🔫',title:'Мафия победила!',sub:'Город под контролем.'},yakuza:{icon:'⚔️',title:'Якудза победила!',sub:'Японский клан захватил власть.'},maniac:{icon:'🔪',title:'Маньяк победил!',sub:'Последний выживший.'}}[wn];document.getElementById('win-icon').textContent=wd.icon;document.getElementById('win-title').textContent=wd.title;document.getElementById('win-sub').textContent=wd.sub;addLog('info',`🏆 ${wd.title}`);saveToHistory();localStorage.removeItem(SAVE_KEY);showScreen('screen-win');return;}
   G.nightNum++;G.nightActions={};G.phase='night';G._nightSnapshot=null;G._beautyLastTargetBeforeNight=G.beautyLastTarget;
   G.players.forEach(p=>{if(p.alive){p.silent=false;p.immune=false;p.nominated=false;p.voteOut=false;}});
   G.nominationOrder=[];G.voteOutOrder=[];
@@ -1454,6 +1455,7 @@ function finishNight(){
 
   // Apply kills
   killed.forEach(num=>{const p=getPlayer(num);if(p&&p.alive){p.alive=false;addLog('death',`💀 #${p.num} ${p.name} (${getRoleDef(p.role).name}) убит ночью`);}});
+  G._killedThisNight=[...killed];
 
   // Apply silent — ONLY from beauty this night
   // (already applied inline above)
@@ -1537,6 +1539,7 @@ function returnToNightEdit(){
   if(headerIdx>=0) G.log=G.log.slice(0,headerIdx+1);
   addLog('night',`↩ Ночь ${G.nightNum}: корректировка`);
   G.nightResults=null;
+  G._killedThisNight=[];
   document.getElementById('game-phase-title').textContent=`Ночь ${G.nightNum}`;
   document.getElementById('game-phase-sub').textContent='Ночная фаза';
   updateStats();renderPlayerList();
@@ -1574,7 +1577,7 @@ function buildDaySummary(){
   const silentPlayers=G.players.filter(p=>p.alive&&p.silent);
   if(silentPlayers.length){h+=`<div class="alert-box alert-info" style="margin-top:8px;">🤫 Молчат сегодня (${silentPlayers.length}): ${silentPlayers.map(p=>`<strong>#${p.num} ${p.name}</strong>`).join(', ')}</div>`;}
   // Killed tonight
-  const killedNight=G.players.filter(p=>!p.alive&&!p.voted);
+  const killedNight=(G._killedThisNight||[]).map(num=>getPlayer(num)).filter(Boolean);
   if(killedNight.length){h+=`<div class="alert-box alert-warn" style="margin-top:8px;">💀 Убиты сегодня (${killedNight.length}): ${killedNight.map(p=>`<strong>#${p.num} ${p.name}</strong>`).join(', ')}</div>`;}
   // Show judge immunity info
   const immunePlayers=G.players.filter(p=>p.alive&&p.immune);
@@ -1655,7 +1658,7 @@ function voteNominated(){
   else if(maf.length&&maf.length>=town.length+yak.length+man.length)w='mafia';
   else if(yak.length&&!maf.length&&yak.length>=town.length+man.length)w='yakuza';
   else if(man.length===1&&alive.length===2){const o=alive.find(p=>p.role!=='maniac');if(o&&!getRoleDef(o.role).shoots)w='maniac';}
-  if(w){const wd={town:{icon:'🏛️',title:'Мирный город победил!',sub:'Все угрозы устранены.'},mafia:{icon:'🔫',title:'Мафия победила!',sub:'Город под контролем.'},yakuza:{icon:'⚔️',title:'Якудза победила!',sub:'Японский клан захватил власть.'},maniac:{icon:'🔪',title:'Маньяк победил!',sub:'Последний выживший.'}}[w];document.getElementById('win-icon').textContent=wd.icon;document.getElementById('win-title').textContent=wd.title;document.getElementById('win-sub').textContent=wd.sub;addLog('info',`🏆 ${wd.title}`);saveToHistory();localStorage.removeItem(SAVE_KEY);showScreen('screen-win');}
+  if(w&&!G.manualWinOnly){const wd={town:{icon:'🏛️',title:'Мирный город победил!',sub:'Все угрозы устранены.'},mafia:{icon:'🔫',title:'Мафия победила!',sub:'Город под контролем.'},yakuza:{icon:'⚔️',title:'Якудза победила!',sub:'Японский клан захватил власть.'},maniac:{icon:'🔪',title:'Маньяк победил!',sub:'Последний выживший.'}}[w];document.getElementById('win-icon').textContent=wd.icon;document.getElementById('win-title').textContent=wd.title;document.getElementById('win-sub').textContent=wd.sub;addLog('info',`🏆 ${wd.title}`);saveToHistory();localStorage.removeItem(SAVE_KEY);showScreen('screen-win');}
 }
 
 // ===== DAY TIMERS =====
@@ -1687,10 +1690,19 @@ function checkWin(){
   if(w){
     const wd={town:{icon:'🏛️',title:'Мирный город победил!',sub:'Все угрозы устранены.'},mafia:{icon:'🔫',title:'Мафия победила!',sub:'Город под контролем.'},yakuza:{icon:'⚔️',title:'Якудза победила!',sub:'Японский клан захватил власть.'},maniac:{icon:'🔪',title:'Маньяк победил!',sub:'Последний выживший.'}}[w];
     document.getElementById('win-icon').textContent=wd.icon;document.getElementById('win-title').textContent=wd.title;document.getElementById('win-sub').textContent=wd.sub;
+    G.manualWinOnly=false;
     addLog('info',`🏆 ${wd.title}`);saveToHistory();localStorage.removeItem(SAVE_KEY);showScreen('screen-win');
   } else showWarn('Игра продолжается — победителя нет.');
 }
 function endGame(){if(confirm('Завершить игру?')){saveToHistory();localStorage.removeItem(SAVE_KEY);showScreen('screen-menu');checkHistoryBtn();}}
+function returnToGameFromWin(){
+  G.manualWinOnly=true;// отключить автопроверку победы
+  showScreen('screen-game');
+  updateStats();renderPlayerList();
+  if(G.phase==='night'){G._nightSteps=buildNightSteps();renderNightSteps();switchGameTab('night');}
+  else{buildDaySummary();buildVoteGrid();switchGameTab('day');}
+  showToast('Возврат в игру. Победа — только вручную.');
+}
 
 // ===== LOG =====
 function addLog(type,msg){

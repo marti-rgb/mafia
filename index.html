@@ -18,8 +18,8 @@
   --radius:12px;--safe-bottom:env(safe-area-inset-bottom,0px);
 }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
-html,body{height:100%;width:100%;overflow:hidden;background:var(--bg);color:var(--text);font-family:'Jost',sans-serif;font-size:15px;}
-.screen{display:none;flex-direction:column;height:100vh;width:100%;position:absolute;top:0;left:0;}
+html,body{height:100%;min-height:-webkit-fill-available;width:100%;overflow:hidden;background:var(--bg);color:var(--text);font-family:'Jost',sans-serif;font-size:15px;}
+.screen{display:none;flex-direction:column;height:100vh;height:100dvh;width:100%;position:absolute;top:0;left:0;}
 .screen.active{display:flex;}
 #screen-menu{background:radial-gradient(ellipse at 50% 30%,#1a1015,#0a0a0f 70%);justify-content:center;align-items:center;overflow-y:auto;}
 .menu-logo{text-align:center;margin-bottom:36px;padding-top:20px;}
@@ -183,7 +183,7 @@ html,body{height:100%;width:100%;overflow:hidden;background:var(--bg);color:var(
 
 <!-- MENU -->
 <div id="screen-menu" class="screen active">
-  <div class="menu-logo"><h1>МАФИЯ</h1><p>Режим ведущего</p><p style="font-size:10px;color:var(--text3);margin-top:4px;letter-spacing:1px;">v2.1</p></div>
+  <div class="menu-logo"><h1>МАФИЯ</h1><p>Режим ведущего</p><p style="font-size:10px;color:var(--text3);margin-top:4px;letter-spacing:1px;">v2.2</p></div>
   <div class="menu-btns">
     <button class="btn-menu primary" onclick="showSetup()">🎮 Новая игра</button>
     <button class="btn-menu" id="menu-join-btn" onclick="showScreen('screen-join')">👤 Войти игроком</button>
@@ -338,9 +338,9 @@ html,body{height:100%;width:100%;overflow:hidden;background:var(--bg);color:var(
       </div>
       <div class="card-title" style="margin-top:12px;">Треки</div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;">
-        <button class="btn btn-primary btn-sm" id="trk-0" onclick="selectTrack(0)">🌑 Ночь</button>
+        <button class="btn btn-secondary btn-sm" id="trk-0" onclick="selectTrack(0)">🌑 Ночь</button>
         <button class="btn btn-secondary btn-sm" id="trk-1" onclick="selectTrack(1)">🔮 Мистика</button>
-        <button class="btn btn-secondary btn-sm" id="trk-2" onclick="selectTrack(2)">🌊 Тихая</button>
+        <button class="btn btn-primary btn-sm" id="trk-2" onclick="selectTrack(2)">🌊 Тихая</button>
         <button class="btn btn-secondary btn-sm" onclick="pickMusicFile()">📁 Файл</button>
         <button class="btn btn-secondary btn-sm" onclick="pickMusicFolder()">📂 Папка</button>
       </div>
@@ -433,7 +433,7 @@ html,body{height:100%;width:100%;overflow:hidden;background:var(--bg);color:var(
         </div>
         <div style="flex:1;text-align:center;">
           <div style="font-size:10px;color:var(--text2);margin-bottom:3px;">ОПРАВДАНИЕ</div>
-          <div class="timer-display" id="day-t2-disp" style="font-size:26px;padding:2px 0;">0:30</div>
+          <div class="timer-display" id="day-t2-disp" style="font-size:26px;padding:2px 0;">0:20</div>
           <div style="display:flex;gap:3px;flex-wrap:wrap;justify-content:center;margin-top:4px;">
             <span class="timer-preset" style="padding:3px 5px;font-size:10px;" onclick="setDayTimerPreset(2,10)">10с</span>
             <span class="timer-preset" style="padding:3px 5px;font-size:10px;" onclick="setDayTimerPreset(2,20)">20с</span>
@@ -1751,41 +1751,43 @@ function startTimer(){if(timerRunning){clearInterval(timerInterval);timerRunning
 function resetTimer(){clearInterval(timerInterval);timerRunning=false;document.getElementById('timer-start-btn').textContent='▶ Старт';setTimer(timerSecs);}
 
 // ===== MUSIC =====
-let musicPlaying=false,musicGain=null,audioCtx=null,musicTrack=0,customAudio=null;
+let musicPlaying=false,musicGain=null,audioCtx=null,musicTrack=2,customAudio=null;
 function getAudioCtx(){if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)();return audioCtx;}
 
 let musicPaused=false;
 function toggleMusic(){
   const hbtn=document.getElementById('hdr-music-btn'),mbtn=document.getElementById('music-btn');
   if(musicPlaying){
-    // Pause
+    clearTimeout(_ambientTimeout);_ambientTimeout=null;
     try{if(customAudio)customAudio.pause();}catch(e){}
     try{if(musicGain)musicGain.gain.value=0;}catch(e){}
     musicPlaying=false;musicPaused=true;
     if(mbtn)mbtn.textContent='▶ Продолжить';
     if(hbtn){hbtn.textContent='⏸';hbtn.style.color='var(--text2)';}
   } else if(musicPaused){
-    // Resume
-    try{if(customAudio)customAudio.play().catch(()=>{});}catch(e){}
-    try{if(musicGain)musicGain.gain.value=(G.settings.musicVolume||20)/500;}catch(e){}
     musicPlaying=true;musicPaused=false;
+    if(_playlist.length&&musicTrack===99){
+      try{customAudio.play().catch(()=>{});}catch(e){}
+      try{if(musicGain)musicGain.gain.value=(G.settings.musicVolume||20)/500;}catch(e){}
+    } else {
+      // Restart melodic sequence
+      try{playAmbient();}catch(e){}
+    }
     if(mbtn)mbtn.textContent='⏸ Пауза';
     if(hbtn){hbtn.textContent='🎵';hbtn.style.color='var(--accent)';}
   } else {
-    // Start fresh
     stopAllAudio();
+    musicPlaying=true;musicPaused=false;
     if(_playlist.length&&musicTrack===99){try{customAudio.play().catch(()=>{});}catch(e){}}
     else{try{playAmbient();}catch(e){}}
-    musicPlaying=true;musicPaused=false;
     if(mbtn)mbtn.textContent='⏸ Пауза';
     if(hbtn){hbtn.textContent='🎵';hbtn.style.color='var(--accent)';}
   }
 }
 function stopAllAudio(){
-  // Stop oscillators
+  clearTimeout(_ambientTimeout);_ambientTimeout=null;
   try{_oscillators.forEach(o=>{try{o.stop();}catch(e){}});_oscillators=[];}catch(e){}
   try{if(musicGain){musicGain.disconnect();musicGain=null;}}catch(e){}
-  // Stop custom audio
   try{if(customAudio){customAudio.pause();customAudio.currentTime=0;}}catch(e){}
 }
 function stopMusic(){
@@ -1813,14 +1815,83 @@ function nextTrack(){
   selectTrack(musicTrack);
 }
 
-let _oscillators=[];
+let _oscillators=[],_ambientTimeout=null;
+
+// Мелодичные паттерны для каждого трека
+const AMBIENT_TRACKS=[
+  // 0: Ночь — медленные глубокие аккорды, минорное настроение
+  {name:'Ночь',notes:[
+    [130.8,0.8],[155.6,0.6],[196.0,0.7],[130.8,0.5],
+    [116.5,0.8],[138.6,0.6],[174.6,0.7],[116.5,0.5],
+    [146.8,0.8],[174.6,0.6],[220.0,0.7],[146.8,0.5],
+    [123.5,0.8],[146.8,0.6],[185.0,0.7],[123.5,0.5],
+  ],tempo:2200,wave:'sine',harmonic:0.3},
+  // 1: Мистика — арпеджио, таинственно
+  {name:'Мистика',notes:[
+    [261.6,0.5],[329.6,0.4],[392.0,0.5],[329.6,0.4],
+    [246.9,0.5],[311.1,0.4],[369.9,0.5],[311.1,0.4],
+    [220.0,0.5],[277.2,0.4],[349.2,0.5],[277.2,0.4],
+    [233.1,0.5],[293.7,0.4],[349.2,0.5],[293.7,0.4],
+  ],tempo:700,wave:'triangle',harmonic:0.15},
+  // 2: Тихая — нежная колыбельная, медленно
+  {name:'Тихая',notes:[
+    [523.2,0.6],[659.3,0.5],[783.9,0.6],[659.3,0.4],
+    [493.9,0.6],[587.3,0.5],[698.5,0.6],[587.3,0.4],
+    [440.0,0.6],[554.4,0.5],[659.3,0.6],[554.4,0.4],
+    [466.2,0.6],[523.2,0.5],[622.3,0.6],[523.2,0.4],
+  ],tempo:1400,wave:'sine',harmonic:0.08},
+];
+
 function playAmbient(){
   const ctx=getAudioCtx();
-  if(musicGain){try{_oscillators.forEach(o=>{try{o.stop();}catch(e){}});musicGain.disconnect();}catch(e){}}
+  // Stop previous
+  clearTimeout(_ambientTimeout);
+  try{_oscillators.forEach(o=>{try{o.stop();}catch(e){}});}catch(e){}
   _oscillators=[];
-  const freqs=[[55,110,165],[73,110,147],[65,98,130]][musicTrack%3];
-  musicGain=ctx.createGain();musicGain.gain.value=(G.settings.musicVolume||20)/500;musicGain.connect(ctx.destination);
-  freqs.forEach(f=>{const o=ctx.createOscillator();o.type='sine';o.frequency.value=f;o.connect(musicGain);o.start();_oscillators.push(o);});
+  try{if(musicGain){musicGain.disconnect();}}catch(e){}
+
+  musicGain=ctx.createGain();
+  musicGain.gain.value=(G.settings.musicVolume||20)/500;
+  musicGain.connect(ctx.destination);
+
+  const trk=AMBIENT_TRACKS[musicTrack%3];
+  let idx=0;
+
+  function playNextNote(){
+    if(!musicPlaying)return;
+    const [freq,amp]=trk.notes[idx%trk.notes.length];
+    idx++;
+
+    const osc=ctx.createOscillator();
+    const env=ctx.createGain();
+    osc.type=trk.wave;
+    osc.frequency.value=freq;
+    env.gain.setValueAtTime(0,ctx.currentTime);
+    env.gain.linearRampToValueAtTime(amp,ctx.currentTime+0.15);
+    env.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+trk.tempo/1000*0.85);
+    osc.connect(env);env.connect(musicGain);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime+trk.tempo/1000);
+    _oscillators.push(osc);
+
+    // Добавить лёгкий гармоник для объёма
+    if(trk.harmonic>0){
+      const osc2=ctx.createOscillator();
+      const env2=ctx.createGain();
+      osc2.type='sine';
+      osc2.frequency.value=freq*2;
+      env2.gain.setValueAtTime(0,ctx.currentTime);
+      env2.gain.linearRampToValueAtTime(amp*trk.harmonic,ctx.currentTime+0.15);
+      env2.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+trk.tempo/1000*0.7);
+      osc2.connect(env2);env2.connect(musicGain);
+      osc2.start(ctx.currentTime);
+      osc2.stop(ctx.currentTime+trk.tempo/1000);
+      _oscillators.push(osc2);
+    }
+
+    _ambientTimeout=setTimeout(playNextNote,trk.tempo);
+  }
+  playNextNote();
 }
 
 function setMusicMode(mode){
@@ -1902,10 +1973,9 @@ function runAutoSim(){const n=parseInt(document.getElementById('sim-count').valu
 // ===== RULES =====
 function showRules(){
   const tl={mafia:'⚫ Мафия',yakuza:'🟣 Якудза',neutral:'🟡 Нейтральный',town:'🔴 Мирный город'};
-  const gameActive=G.players.length>0&&G.phase!==undefined;
   const gs=G.settings;
+  const gameActive=G.players.length>0;
   function getRuleDesc(k,rd){
-    if(!gameActive)return rd.desc||'';
     if(k==='doctor'){const modes=['Может лечить себя без ограничений.','Нельзя лечить одного и того же дважды подряд.','Себя можно вылечить только один раз за игру, других — нельзя повторно.'];return'Защищает игрока от любого выстрела. '+(modes[gs.doctorMode]||modes[1]);}
     if(k==='beauty'){const selfRule=gs.beautySelf?'Может ходить к себе.':'Не может ходить к себе.';const repeatRule=gs.beautyRepeat?'Можно ходить к одному игроку несколько ночей подряд.':'Нельзя ходить к одному и тому же игроку две ночи подряд.';return'Приходит к игроку ночью. Если к нему идёт стреляющая роль — выживает и молчит весь день. Если стреляют в Красотку — умирает она и тот, к кому она шла. '+selfRule+' '+repeatRule;}
     if(k==='maniac'){const manModes=['Показываюсь красным пока жива мафия/якудза, после их гибели — чёрным.','Всегда показываюсь чёрным на всех проверках.'];return'Играю сам за себя. Не могу отказаться от выстрела. Выигрываю 1 на 1 с нестреляющим. '+(manModes[gs.maniacMode||0]||manModes[0]);}
@@ -1914,8 +1984,9 @@ function showRules(){
     if(k==='detective'){const detMode=gs.detDiesAny?'Погибает при выстреле в любого.':'Погибает только при выстреле в красного.';return'Стреляет или проверяет — на выбор. '+detMode;}
     return rd.desc||'';
   }
-  let header='';
-  if(gameActive){header=`<div class="alert-box alert-info" style="margin-bottom:10px;">⚙️ Правила с учётом настроек текущей игры</div>`;}
+  const header=gameActive
+    ?`<div class="alert-box alert-info" style="margin-bottom:10px;">⚙️ Правила с учётом настроек текущей игры</div>`
+    :`<div class="alert-box alert-warn" style="margin-bottom:10px;">⚙️ Правила с учётом текущих настроек</div>`;
   document.getElementById('rules-content').innerHTML=header+Object.entries(ROLES_DEF).map(([k,rd])=>`<div class="card"><div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;"><span style="font-size:26px;">${rd.icon}</span><div><div style="font-size:15px;font-weight:700;">${rd.name}</div><span class="role-badge ${rd.badge}">${tl[rd.team]}</span></div></div><div style="font-size:13px;color:var(--text2);line-height:1.6;">${getRuleDesc(k,rd)}</div></div>`).join('');
   showScreen('screen-rules');
 }

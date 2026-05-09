@@ -183,7 +183,7 @@ html,body{height:100%;min-height:-webkit-fill-available;width:100%;overflow:hidd
 
 <!-- MENU -->
 <div id="screen-menu" class="screen active">
-  <div class="menu-logo"><h1>МАФИЯ</h1><p>Режим ведущего</p><p style="font-size:10px;color:var(--text3);margin-top:4px;letter-spacing:1px;">v2.5</p></div>
+  <div class="menu-logo"><h1>МАФИЯ</h1><p>Режим ведущего</p><p style="font-size:10px;color:var(--text3);margin-top:4px;letter-spacing:1px;">v2.6</p></div>
   <div class="menu-btns">
     <button class="btn-menu primary" onclick="showSetup()">🎮 Новая игра</button>
     <button class="btn-menu" id="menu-join-btn" onclick="showScreen('screen-join')">👤 Войти игроком</button>
@@ -192,6 +192,10 @@ html,body{height:100%;min-height:-webkit-fill-available;width:100%;overflow:hidd
     <button class="btn-menu" onclick="showSettings()">⚙️ Настройки</button>
     <button class="btn-menu" id="menu-history-btn" style="display:none" onclick="showHistory()">📋 История игр</button>
     <a href="https://t.me/Inspector_party" target="_blank" class="btn-menu" style="text-decoration:none;justify-content:center;">✈️ Мафия на Марьиной роще</a>
+    <div style="display:flex;gap:8px;align-items:center;padding:8px 0 4px;justify-content:center;">
+      <a href="https://marti-rgb.github.io/mafia/" target="_blank" style="font-size:11px;color:var(--text3);text-decoration:none;">🔗 marti-rgb.github.io/mafia</a>
+      <button class="btn btn-secondary btn-sm" style="font-size:11px;padding:4px 10px;" onclick="if(navigator.share){navigator.share({title:'Мафия',url:'https://marti-rgb.github.io/mafia/'});}else{navigator.clipboard.writeText('https://marti-rgb.github.io/mafia/');showToast('Ссылка скопирована');}">📤 Поделиться</button>
+    </div>
   </div>
 </div>
 
@@ -225,7 +229,7 @@ html,body{height:100%;min-height:-webkit-fill-available;width:100%;overflow:hidd
     <div id="rr-desc" class="rr-desc"></div>
     <div style="display:flex;flex-direction:column;align-items:center;gap:10px;margin-top:12px;">
       <button class="btn btn-secondary" id="btn-remembered" style="min-width:180px;" onclick="markRemembered(this)">Запомнил ✓</button>
-      <button class="btn btn-secondary" style="min-width:180px;" onclick="showScreen('screen-menu')">← На главную</button>
+      <button class="btn btn-secondary" style="min-width:180px;" onclick="resetRememberedBtn();showScreen('screen-menu')">← На главную</button>
     </div>
   </div>
 </div>
@@ -418,6 +422,7 @@ html,body{height:100%;min-height:-webkit-fill-available;width:100%;overflow:hidd
   <div id="gtab-players" class="scroll-area"><div style="padding-bottom:4px;display:flex;justify-content:space-between;align-items:center;gap:6px;"><button class="btn btn-secondary btn-sm" id="add-player-btn" onclick="openAddPlayer()" style="font-size:11px;">➕ Добавить игрока</button><button class="btn btn-secondary btn-sm" id="check-joined-btn" onclick="checkPlayersJoined()" style="font-size:11px;display:none;">🔍 Кто не нажал «Запомнил»</button></div><div id="player-list"></div></div>
   <div id="gtab-night" class="scroll-area" style="display:none">
     <div class="text-center mb8"><span class="night-num-badge" id="night-badge">🌙 Ночь 1</span></div>
+    <div id="night-player-roles" style="font-size:11px;color:var(--text2);margin-bottom:6px;line-height:1.7;padding:0 4px;"></div>
     <div id="night-steps"></div>
   </div>
   <div id="gtab-day" class="scroll-area" style="display:none">
@@ -1039,6 +1044,8 @@ function goNight(){
   document.getElementById('game-phase-title').textContent=`Ночь ${G.nightNum}`;
   document.getElementById('game-phase-sub').textContent='Ночная фаза';
   document.getElementById('night-badge').textContent=`🌙 Ночь ${G.nightNum}`;
+  const nprEl=document.getElementById('night-player-roles');
+  if(nprEl){const alive=G.players.filter(p=>p.alive);nprEl.innerHTML=alive.map(p=>{const rd=getRoleDef(p.role);return`<span style="margin-right:10px;white-space:nowrap;">${rd.icon} <strong>#${p.num}</strong> ${p.name}<span style="color:var(--text3);font-size:10px;"> ${rd.name}</span></span>`;}).join('');}
   G.currentNightStepIdx=0;
   addLog('night',`🌙 === НОЧЬ ${G.nightNum} ===`);
   renderNightSteps();updateStats();renderPlayerList();
@@ -1274,11 +1281,11 @@ function finishNight(){
     let ok=true;
     if(G.settings.doctorMode===1&&G.doctorLastTarget===docTarget)ok=false;
     if(G.settings.doctorMode===2){if(G.doctorLastTarget===docTarget)ok=false;const dp=alive.find(p=>p.role==='doctor');if(dp&&docTarget===dp.num&&G.doctorSelfUsed)ok=false;}
-    if(ok){saved.add(docTarget);G.doctorLastTarget=docTarget;const dp=alive.find(p=>p.role==='doctor');if(dp&&docTarget===dp.num)G.doctorSelfUsed=true;getPlayer(docTarget)?.actions.push(`Ночь ${G.nightNum}: Доктор защитил`);addLog('info',`💊 Доктор → #${docTarget}`);}
+    if(ok){saved.add(docTarget);G.doctorLastTarget=docTarget;const dp=alive.find(p=>p.role==='doctor');if(dp&&docTarget===dp.num)G.doctorSelfUsed=true;getPlayer(docTarget)?.actions.push(`Ночь ${G.nightNum}: Доктор защитил`);addLog('info',`💊 Доктор #${dp?dp.num+'':''} → ${pn(docTarget)}`);}
   }
 
   // Judge
-  if(judgeTarget>0){const jp=getPlayer(judgeTarget);if(jp&&jp.alive){jp.immune=true;jp.actions.push(`Ночь ${G.nightNum}: иммунитет`);privateResults.push({icon:'⚖️',text:`Судья → иммунитет <strong>#${judgeTarget} ${jp.name}</strong>`});addLog('info',`⚖️ Судья → #${judgeTarget}`);}}
+  if(judgeTarget>0){const jp=getPlayer(judgeTarget);const ja=alive.find(p=>p.role==='judge');if(jp&&jp.alive){jp.immune=true;jp.actions.push(`Ночь ${G.nightNum}: иммунитет`);privateResults.push({icon:'⚖️',text:`Судья → иммунитет <strong>#${judgeTarget} ${jp.name}</strong>`});addLog('info',`⚖️ Судья${ja?` #${ja.num} ${ja.name}`:''} → ${pn(judgeTarget)}`);}}  
 
   // Считаем сколько стрелков идут к каждому игроку (для docStrength=1)
   const shooterCount={};
@@ -1351,17 +1358,18 @@ function finishNight(){
     announceResults.push({icon:'💀',text:`${shooterLabel} убивает <strong>#${targetNum} ${tp.name}</strong> (${getRoleDef(tp.role).name}).`});
   };
 
-  if(mafiaTarget>0){addLog('night',`🔫 Мафия → #${mafiaTarget}`);processShot(mafiaTarget,'🔫 Мафия','стреляла');}
+  const pn=(num)=>{const p=getPlayer(num);return p?`#${num} ${p.name} (${getRoleDef(p.role).name})`:`#${num}`;};
+
+  if(mafiaTarget>0){addLog('night',`🔫 Мафия → ${pn(mafiaTarget)}`);processShot(mafiaTarget,'🔫 Мафия','стреляла');}
   else{addLog('night','💨 Мафия — несострел');announceResults.push({icon:'💨',text:'Мафия — несострел.'});}
 
-  if(yakuzaTarget>0&&G.activeRoles.yakuza){addLog('night',`⚔️ Якудза → #${yakuzaTarget}`);processShot(yakuzaTarget,'⚔️ Якудза','стреляла');}
+  if(yakuzaTarget>0&&G.activeRoles.yakuza){addLog('night',`⚔️ Якудза → ${pn(yakuzaTarget)}`);processShot(yakuzaTarget,'⚔️ Якудза','стреляла');}
   else if(G.activeRoles.yakuza&&alive.some(p=>p.role==='yakuza')){addLog('night','💨 Якудза — несострел');announceResults.push({icon:'💨',text:'Якудза — несострел.'});}
 
   if(maniacTarget>0&&alive.some(p=>p.role==='maniac')){
     const ma=alive.find(p=>p.role==='maniac');
     if(ma){
-      addLog('night',`🔪 Маньяк → #${maniacTarget}`);
-      // If beauty was shot by someone and killed, beautyValid=false, so maniac shot at her ex-target is just a normal shot
+      addLog('night',`🔪 Маньяк #${ma.num} ${ma.name} → ${pn(maniacTarget)}`);
       processShot(maniacTarget,'🔪 Маньяк','стрелял');
     }
   }
@@ -1370,7 +1378,7 @@ function finishNight(){
   if(ripperTarget>0&&alive.some(p=>p.role==='ripper')){
     const rp=alive.find(p=>p.role==='ripper');
     if(rp){
-      addLog('night',`🗡️ Потрошитель → #${ripperTarget}`);
+      addLog('night',`🗡️ Потрошитель #${rp.num} ${rp.name} → ${pn(ripperTarget)}`);
       const tp=getPlayer(ripperTarget);
       if(tp&&tp.alive){
         if(saved.has(ripperTarget)){announceResults.push({icon:'💊',text:`Потрошитель → #${ripperTarget}, Доктор спас.`});}
@@ -1403,7 +1411,7 @@ function finishNight(){
     const da=alive.find(p=>p.role==='detective');
     if(da){
       if(detAction===1){
-        addLog('night',`🔍 Детектив стреляет → #${detTarget}`);
+        addLog('night',`🔍 Детектив #${da.num} ${da.name} стреляет → ${pn(detTarget)}`);
         const tp=getPlayer(detTarget);
         if(tp){
           if(saved.has(detTarget)){announceResults.push({icon:'💊',text:`Детектив → #${detTarget}, Доктор спас.`});}
@@ -1420,7 +1428,7 @@ function finishNight(){
           }
         }
       } else if(detAction===2){
-        addLog('night',`🔍 Детектив проверяет → #${detTarget}`);
+        addLog('night',`🔍 Детектив #${da.num} ${da.name} проверяет → ${pn(detTarget)}`);
         const tp=getPlayer(detTarget);
         if(tp){const rd=getRoleDef(tp.role);const isB=rd.team==='mafia'||rd.team==='yakuza';privateResults.push({icon:'🔍',text:`Детектив: <strong>#${detTarget} ${tp.name}</strong> — ${isB?'⚫ ЧЁРНЫЙ':'🔴 КРАСНЫЙ'} (${rd.name})`});da.actions.push(`Ночь ${G.nightNum}: #${detTarget} → ${isB?'чёрный':'красный'}`);}
       }
@@ -1431,7 +1439,7 @@ function finishNight(){
   if(sherTarget>0&&alive.some(p=>p.role==='sheriff')){
     const sa=alive.find(p=>p.role==='sheriff');
     if(sa){
-      addLog('night',`🔰 Шериф → #${sherTarget}`);
+      addLog('night',`🔰 Шериф #${sa.num} ${sa.name} → ${pn(sherTarget)}`);
       const tp=getPlayer(sherTarget);
       if(tp){
         const rd=getRoleDef(tp.role);const mafAlive=alive.some(p=>p.role==='mafia'||p.role==='don');
@@ -1449,7 +1457,7 @@ function finishNight(){
   if(donCheck>0&&alive.some(p=>p.role==='don')){
     const da=alive.find(p=>p.role==='don');
     if(da){
-      addLog('night',`🎩 Дон → #${donCheck}`);
+      addLog('night',`🎩 Дон #${da.num} ${da.name} → ${pn(donCheck)}`);
       const tp=getPlayer(donCheck);
       if(tp){const is=tp.role==='sheriff';privateResults.push({icon:'🎩',text:`Дон → <strong>#${donCheck} ${tp.name}</strong>: ${is?'<strong>⭐ ШЕРИФ!</strong>':'не Шериф'}`});da.actions.push(`Ночь ${G.nightNum}: #${donCheck} → ${is?'Шериф':'не Шериф'}`);}
     }
@@ -1459,7 +1467,7 @@ function finishNight(){
   if(priestTarget>0&&alive.some(p=>p.role==='priest')){
     const pa=alive.find(p=>p.role==='priest');
     if(pa){
-      addLog('night',`✝️ Священник → #${priestTarget}`);
+      addLog('night',`✝️ Священник #${pa.num} ${pa.name} → ${pn(priestTarget)}`);
       const tp=getPlayer(priestTarget);
       if(tp){
         if(tp.role==='maniac'){
@@ -1639,8 +1647,13 @@ function buildVoteOutGrid(){
 function toggleNom(num){
   const p=getPlayer(num);if(!p||!p.alive)return;
   p.nominated=!p.nominated;
-  if(p.nominated){if(!G.nominationOrder.includes(num))G.nominationOrder.push(num);}
-  else{G.nominationOrder=G.nominationOrder.filter(n=>n!==num);p.voteOut=false;G.voteOutOrder=G.voteOutOrder.filter(n=>n!==num);}
+  if(p.nominated){
+    if(!G.nominationOrder.includes(num))G.nominationOrder.push(num);
+    addLog('day',`🗳 #${p.num} ${p.name} (${getRoleDef(p.role).name}) выставлен на голосование`);
+  } else {
+    G.nominationOrder=G.nominationOrder.filter(n=>n!==num);p.voteOut=false;G.voteOutOrder=G.voteOutOrder.filter(n=>n!==num);
+    addLog('day',`↩ #${p.num} ${p.name} снят с голосования`);
+  }
   const c=document.getElementById('vcell-'+num);if(c)c.classList.toggle('nominated',p.nominated);
   buildVoteOutGrid();updateNomList();
 }
@@ -1766,7 +1779,8 @@ function joinGame(){
   const p=G.players.find(p=>p.num===num);if(!p){showWarn(`Игрок #${num} не найден. Проверьте номер.`);return;}
   p.name=name;savePlayerNames();
   renderPlayerList();updateStats();
-  p.roleViewed=true;// флаг — игрок увидел свою роль
+  p.roleViewed=true;
+  resetRememberedBtn();// сброс кнопки для каждого нового игрока
   const rd=getRoleDef(p.role);
   document.getElementById('rr-icon').textContent=rd.icon;
   document.getElementById('rr-name').textContent=rd.name;
@@ -2224,48 +2238,50 @@ function fbStartListening(gameId){
   if(btn) btn.style.display = '';
 }
 
+function resetRememberedBtn(){
+  const el=document.getElementById('btn-remembered');
+  if(el){el.style.background='';el.style.color='';el.style.borderColor='';el.textContent='Запомнил ✓';el.onclick=function(){markRemembered(this);};}
+}
+
 // Игрок нажал Запомнил — помечаем в Firebase, остаёмся на странице
 async function markRemembered(btn){
   const gameId=window._playerGameId;
   const num=window._playerNum;
+  // Локальный флаг на игроке
+  const p=getPlayer(num);if(p)p.roleViewed=true;
   if(gameId&&num){
     try{await db.ref('games/'+gameId+'/players/'+num+'/remembered').set(true);}catch(e){}
   }
-  // Менять цвет кнопки — остаёмся на странице
   const el=btn||document.getElementById('btn-remembered');
   if(el){
-    el.style.background='var(--green)';
-    el.style.color='#fff';
-    el.style.borderColor='var(--green)';
-    el.textContent='✅ Запомнил';
-    el.onclick=null;
+    el.style.background='var(--green)';el.style.color='#fff';el.style.borderColor='var(--green)';
+    el.textContent='✅ Запомнил';el.onclick=null;
   }
 }
 
 // Ведущий: проверить кто не нажал Запомнил
 async function checkPlayersJoined(){
-  // Локальный режим — проверяем по флагу roleViewed на игроках
   if(!G._gameId){
+    // Локальный режим — проверяем roleViewed на каждом игроке
     const notViewed=G.players.filter(p=>!p.roleViewed).map(p=>`#${p.num} ${p.name}`);
     const viewed=G.players.filter(p=>p.roleViewed).map(p=>`#${p.num} ${p.name}`);
     if(notViewed.length===0){
       showWarn(`✅ Все ${viewed.length} игроков нажали «Запомнил»!`);
     } else {
-      showWarn(`🔍 Ещё не нажали «Запомнил» (${notViewed.length}):<br><br><strong>${notViewed.join('<br>')}</strong><br><br>Нажали (${viewed.length}): ${viewed.join(', ')}`);
+      showWarn(`🔍 Не нажали «Запомнил» (${notViewed.length}):<br><br><strong>${notViewed.join('<br>')}</strong><br><br>Нажали (${viewed.length}): ${viewed.join(', ')}`);
     }
     return;
   }
   // Firebase режим
   try{
     const snap=await db.ref('games/'+G._gameId+'/players').once('value');
-    const all=snap.val();
-    if(!all){showWarn('Нет данных о игроках.');return;}
-    const notRemembered=G.players.filter(p=>(!all[p.num]||!all[p.num].remembered)).map(p=>`#${p.num} ${p.name}`);
+    const all=snap.val()||{};
+    const notRemembered=G.players.filter(p=>!all[p.num]||!all[p.num].remembered).map(p=>`#${p.num} ${p.name}`);
     const remembered=G.players.filter(p=>all[p.num]&&all[p.num].remembered).map(p=>`#${p.num} ${p.name}`);
     if(notRemembered.length===0){
       showWarn(`✅ Все ${remembered.length} игроков нажали «Запомнил»!`);
     } else {
-      showWarn(`🔍 Ещё не нажали «Запомнил» (${notRemembered.length}):<br><br><strong>${notRemembered.join('<br>')}</strong><br><br>Нажали (${remembered.length}): ${remembered.join(', ')}`);
+      showWarn(`🔍 Не нажали «Запомнил» (${notRemembered.length}):<br><br><strong>${notRemembered.join('<br>')}</strong><br><br>Нажали (${remembered.length}): ${remembered.join(', ')}`);
     }
   }catch(e){showWarn('Ошибка Firebase: '+e.message);}
 }

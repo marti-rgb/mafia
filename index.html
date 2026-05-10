@@ -183,7 +183,7 @@ html,body{height:100%;min-height:-webkit-fill-available;width:100%;overflow:hidd
 
 <!-- MENU -->
 <div id="screen-menu" class="screen active">
-  <div class="menu-logo"><h1>МАФИЯ</h1><p>Режим ведущего</p><p style="font-size:10px;color:var(--text3);margin-top:4px;letter-spacing:1px;">v2.6</p></div>
+  <div class="menu-logo"><h1>МАФИЯ</h1><p>Режим ведущего</p><p style="font-size:10px;color:var(--text3);margin-top:4px;letter-spacing:1px;">v3.0</p></div>
   <div class="menu-btns">
     <button class="btn-menu primary" onclick="showSetup()">🎮 Новая игра</button>
     <button class="btn-menu" id="menu-join-btn" onclick="showScreen('screen-join')">👤 Войти игроком</button>
@@ -191,11 +191,23 @@ html,body{height:100%;min-height:-webkit-fill-available;width:100%;overflow:hidd
     <button class="btn-menu" onclick="showRules()">📖 Правила ролей</button>
     <button class="btn-menu" onclick="showSettings()">⚙️ Настройки</button>
     <button class="btn-menu" id="menu-history-btn" style="display:none" onclick="showHistory()">📋 История игр</button>
-    <a href="https://t.me/Inspector_party" target="_blank" class="btn-menu" style="text-decoration:none;justify-content:center;">✈️ Мафия на Марьиной роще</a>
-    <div style="display:flex;gap:8px;align-items:center;padding:8px 0 4px;justify-content:center;">
+    <a href="https://t.me/+Bi5nisq0bHY0NThi" target="_blank" class="btn-menu" style="text-decoration:none;justify-content:center;display:flex;align-items:center;gap:8px;">✈️ Мафия на Марьиной роще <button class="btn btn-secondary btn-sm" style="font-size:11px;padding:3px 8px;margin:0;" onclick="event.preventDefault();event.stopPropagation();if(navigator.share){navigator.share({title:'Мафия на Марьиной роще',url:'https://t.me/+Bi5nisq0bHY0NThi'});}else{navigator.clipboard.writeText('https://t.me/+Bi5nisq0bHY0NThi');showToast('Ссылка скопирована');}">📤</button></a>
+    <div style="display:flex;gap:8px;align-items:center;padding:8px 0 0;justify-content:center;">
       <a href="https://marti-rgb.github.io/mafia/" target="_blank" style="font-size:11px;color:var(--text3);text-decoration:none;">🔗 marti-rgb.github.io/mafia</a>
-      <button class="btn btn-secondary btn-sm" style="font-size:11px;padding:4px 10px;" onclick="if(navigator.share){navigator.share({title:'Мафия',url:'https://marti-rgb.github.io/mafia/'});}else{navigator.clipboard.writeText('https://marti-rgb.github.io/mafia/');showToast('Ссылка скопирована');}">📤 Поделиться</button>
+      <button class="btn btn-secondary btn-sm" style="font-size:11px;padding:4px 8px;" onclick="if(navigator.share){navigator.share({title:'Мафия',url:'https://marti-rgb.github.io/mafia/'});}else{navigator.clipboard.writeText('https://marti-rgb.github.io/mafia/');showToast('Ссылка скопирована');}">📤</button>
+      <button class="btn btn-secondary btn-sm" style="font-size:11px;padding:4px 8px;" onclick="showQR()">QR</button>
     </div>
+    <div style="display:flex;gap:8px;padding:8px 0 4px;justify-content:center;">
+    </div>
+  </div>
+</div>
+<!-- QR modal -->
+<div class="modal-overlay" id="modal-qr" onclick="closeModal('modal-qr')" style="display:none;align-items:center;justify-content:center;">
+  <div class="modal" style="max-width:280px;text-align:center;" onclick="event.stopPropagation()">
+    <button class="modal-close" onclick="closeModal('modal-qr')">✕</button>
+    <div class="modal-title">QR — ссылка на игру</div>
+    <div id="qr-container" style="margin:16px auto;"></div>
+    <div style="font-size:11px;color:var(--text2);">marti-rgb.github.io/mafia</div>
   </div>
 </div>
 
@@ -229,7 +241,7 @@ html,body{height:100%;min-height:-webkit-fill-available;width:100%;overflow:hidd
     <div id="rr-desc" class="rr-desc"></div>
     <div style="display:flex;flex-direction:column;align-items:center;gap:10px;margin-top:12px;">
       <button class="btn btn-secondary" id="btn-remembered" style="min-width:180px;" onclick="markRemembered(this)">Запомнил ✓</button>
-      <button class="btn btn-secondary" style="min-width:180px;" onclick="resetRememberedBtn();showScreen('screen-menu')">← На главную</button>
+      <button class="btn btn-secondary" style="min-width:180px;" onclick="resetRememberedBtn();showScreen('screen-join')">← Назад</button>
     </div>
   </div>
 </div>
@@ -276,7 +288,7 @@ html,body{height:100%;min-height:-webkit-fill-available;width:100%;overflow:hidd
     <div class="card">
       <div class="card-title">Кастомные роли</div>
       <div id="custom-roles-list"></div>
-      <button class="btn btn-secondary btn-full mt8" onclick="openModal('modal-custom-role')">+ Добавить роль</button>
+      <button class="btn btn-secondary btn-full mt8" onclick="openCustomRoleModal()">+ Добавить роль</button>
     </div>
   </div>
   <div id="setup-roles" class="scroll-area" style="display:none">
@@ -311,6 +323,7 @@ html,body{height:100%;min-height:-webkit-fill-available;width:100%;overflow:hidd
       <div style="display:flex;flex-direction:column;gap:6px;">
         <button class="btn btn-secondary" id="rmode-0" onclick="setRipperMode(0)">Убивает активных, от обывателей — умирает</button>
         <button class="btn btn-primary" id="rmode-1" onclick="setRipperMode(1)">Убивает активных, от обывателей — не умирает</button>
+        <button class="btn btn-secondary" id="rmode-2" onclick="setRipperMode(2)">Умирает сам, активная роль выживает если доктор/красотка спасли</button>
       </div>
     </div>
     <div class="card">
@@ -359,6 +372,12 @@ html,body{height:100%;min-height:-webkit-fill-available;width:100%;overflow:hidd
       <div id="music-playlist-ui" style="display:none;margin-top:8px;"></div>
     </div>
     <div class="card">
+      <div class="card-title">🌙 Порядок ролей ночью</div>
+      <div style="font-size:11px;color:var(--text2);margin-bottom:8px;">Перетащите строки для изменения порядка</div>
+      <div id="night-order-list" style="display:flex;flex-direction:column;gap:4px;"></div>
+      <button class="btn btn-secondary btn-sm mt8" onclick="resetNightOrder()">↺ По умолчанию</button>
+    </div>
+    <div class="card">
       <div class="card-title">🔔 Будильник</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
         <button class="btn btn-secondary btn-sm" onclick="testAlarm(0)">🔔 Классика</button>
@@ -372,11 +391,15 @@ html,body{height:100%;min-height:-webkit-fill-available;width:100%;overflow:hidd
         </select>
       </div>
     </div>
+    <div class="card">
+      <div class="card-title">📤 Экспорт / Импорт настроек</div>
+      <button class="btn btn-secondary btn-full mb8" onclick="exportSettings()">📤 Экспортировать настройки</button>
+      <input type="file" id="import-settings-file3" accept=".json" style="display:none" onchange="importSettingsFile(this)">
+      <button class="btn btn-secondary btn-full" onclick="document.getElementById('import-settings-file3').click()">📥 Загрузить настройки (.json)</button>
+    </div>
   </div>
   <div class="bottom-bar"><button class="btn btn-primary btn-full" onclick="startGame()">▶ Начать игру</button></div>
 </div>
-
-<!-- ROLE REVIEW (after auto assign) -->
 <div id="screen-role-review" class="screen">
   <div class="hdr">
     <div class="hdr-title">Состав игры</div>
@@ -606,11 +629,48 @@ html,body{height:100%;min-height:-webkit-fill-available;width:100%;overflow:hidd
 <div class="modal-overlay" id="modal-custom-role">
   <div class="modal"><button class="modal-close" onclick="closeModal('modal-custom-role')">✕</button>
     <div class="modal-title">Кастомная роль</div>
-    <div class="form-group mb8"><label class="inp-label">Название</label><input class="inp" id="cr-name" placeholder="Шпион"></div>
+    <input type="hidden" id="cr-edit-key">
+    <div style="display:flex;gap:8px;margin-bottom:8px;">
+      <div class="form-group" style="flex:0 0 56px;"><label class="inp-label">Иконка</label><input class="inp" id="cr-icon" placeholder="🃏" style="font-size:20px;text-align:center;" maxlength="2" value="🃏"></div>
+      <div class="form-group" style="flex:1;"><label class="inp-label">Название</label><input class="inp" id="cr-name" placeholder="Шпион"></div>
+    </div>
     <div class="form-group mb8"><label class="inp-label">Команда</label>
-      <select class="inp" id="cr-team"><option value="town">Мирный город</option><option value="mafia">Мафия</option><option value="yakuza">Якудза</option><option value="neutral">Нейтральный</option></select></div>
-    <div class="form-group mb8"><label class="inp-label">Описание</label><textarea class="notes-inp" id="cr-desc" placeholder="Просыпается ночью и..."></textarea></div>
-    <div class="form-group mb8"><label class="inp-label">Стреляет?</label><select class="inp" id="cr-shoots"><option value="0">Нет</option><option value="1">Да</option></select></div>
+      <select class="inp" id="cr-team"><option value="town">🔴 Мирный город</option><option value="mafia">⚫ Мафия</option><option value="yakuza">🟣 Якудза</option><option value="neutral">🟡 Нейтральный</option></select>
+    </div>
+    <div class="form-group mb8"><label class="inp-label">Описание для игрока</label><textarea class="notes-inp" id="cr-desc" placeholder="Просыпается ночью и..." style="min-height:60px;"></textarea></div>
+    <div class="card-title" style="margin:10px 0 6px;">Способности</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px;">
+      <label style="display:flex;align-items:center;gap:6px;font-size:13px;"><input type="checkbox" id="cr-shoots"> Стреляет</label>
+      <label style="display:flex;align-items:center;gap:6px;font-size:13px;"><input type="checkbox" id="cr-saves"> Спасает</label>
+      <label style="display:flex;align-items:center;gap:6px;font-size:13px;"><input type="checkbox" id="cr-checks"> Проверяет</label>
+      <label style="display:flex;align-items:center;gap:6px;font-size:13px;"><input type="checkbox" id="cr-wakeup" checked> Будить ночью</label>
+    </div>
+    <div class="card-title" style="margin:10px 0 6px;">Тип роли</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;">
+      <label style="display:flex;align-items:center;gap:6px;font-size:13px;"><input type="radio" name="cr-color" value="black" id="cr-black"> ⚫ Чёрная</label>
+      <label style="display:flex;align-items:center;gap:6px;font-size:13px;"><input type="radio" name="cr-color" value="red" id="cr-red" checked> 🔴 Красная</label>
+      <label style="display:flex;align-items:center;gap:6px;font-size:13px;"><input type="radio" name="cr-color" value="neutral" id="cr-neutral"> 🟡 Нейтральная</label>
+    </div>
+    <div id="cr-shooter-opts" style="display:none;">
+      <div class="card-title" style="margin:8px 0 6px;">Если стреляющая — защита от неё</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;">
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;"><input type="checkbox" id="cr-doc-saves" checked> Доктор спасает</label>
+        <label style="display:flex;align-items:center;gap=6px;font-size:13px;"><input type="checkbox" id="cr-beauty-saves" checked> Красотка спасает</label>
+      </div>
+    </div>
+    <div class="card-title" style="margin:8px 0 6px;">Перехватчик</div>
+    <div style="margin-bottom:8px;">
+      <label style="display:flex;align-items:center;gap:6px;font-size:13px;margin-bottom:4px;"><input type="checkbox" id="cr-inherits"> Перехватывает роль при смерти носителя</label>
+      <div id="cr-inherit-target" style="display:none;margin-top:4px;">
+        <label class="inp-label">Какую роль перехватывает</label>
+        <select class="inp" id="cr-inherit-role">
+          <option value="">— выбрать —</option>
+          <option value="doctor">Доктор</option><option value="sheriff">Шериф</option><option value="detective">Детектив</option>
+          <option value="beauty">Красотка</option><option value="judge">Судья</option><option value="priest">Священник</option>
+          <option value="ripper">Потрошитель</option><option value="mafia">Мафия</option>
+        </select>
+      </div>
+    </div>
     <button class="btn btn-primary btn-full mt8" onclick="saveCustomRole()">Сохранить</button>
   </div>
 </div>
@@ -658,7 +718,8 @@ const ROLES_DEF={
   civilian: {name:'Обыватель',  icon:'👤',team:'town',   shoots:false,badge:'rb-civilian',
     desc:'Голосует днём. Вычисляет и выголосовывает чёрных.'},
 };
-const NIGHT_ORDER=['beauty','mafia','don','yakuza','detective','sheriff','doctor','judge','priest','ripper','maniac'];
+const NIGHT_ORDER_DEFAULT=['beauty','mafia','don','yakuza','detective','sheriff','doctor','judge','priest','ripper','maniac'];
+let NIGHT_ORDER=NIGHT_ORDER_DEFAULT.slice();
 
 // ===== GAME STATE =====
 let G={
@@ -701,7 +762,7 @@ function simTab(name,el){
 
 // ===== SETUP =====
 let assignMode='auto';
-function showSetup(){renderRoleToggles();updateSetupPreview();applyModeUI();applyDoctorModeUI();applyRipperModeUI();applyToggleUI();setManiacMode(G.settings.maniacMode||0);setPriestMode(G.settings.priestMode!==undefined?G.settings.priestMode:1);setDocStrength(G.settings.docStrength||0);showScreen('screen-setup');}
+function showSetup(){if(!G.settings.nightOrder)G.settings.nightOrder=NIGHT_ORDER_DEFAULT.slice();NIGHT_ORDER=G.settings.nightOrder.slice();renderRoleToggles();updateSetupPreview();applyModeUI();applyDoctorModeUI();applyRipperModeUI();applyToggleUI();setManiacMode(G.settings.maniacMode||0);setPriestMode(G.settings.priestMode!==undefined?G.settings.priestMode:1);setDocStrength(G.settings.docStrength||0);renderNightOrderList();showScreen('screen-setup');}
 
 function setAssignMode(m){
   assignMode=m;
@@ -782,19 +843,96 @@ function setDoctorMode(m){G.settings.doctorMode=m;applyDoctorModeUI();}
 function applyDoctorModeUI(){[0,1,2].forEach(i=>{const el=document.getElementById('dmode-'+i);if(el){el.className=G.settings.doctorMode===i?'btn btn-primary':'btn btn-secondary';}});}
 function setDocStrength(m){G.settings.docStrength=m;[0,1].forEach(i=>{const el=document.getElementById('doc-strength-'+i);if(el)el.className=G.settings.docStrength===i?'btn btn-primary':'btn btn-secondary';});}
 function setRipperMode(m){G.settings.ripperMode=m;applyRipperModeUI();}
-function applyRipperModeUI(){[0,1].forEach(i=>{const el=document.getElementById('rmode-'+i);if(el){el.className=G.settings.ripperMode===i?'btn btn-primary':'btn btn-secondary';}});}
+function applyRipperModeUI(){[0,1,2].forEach(i=>{const el=document.getElementById('rmode-'+i);if(el){el.className=G.settings.ripperMode===i?'btn btn-primary':'btn btn-secondary';}});}
 function setManiacMode(m){G.settings.maniacMode=m;[0,1].forEach(i=>{const el=document.getElementById('maniac-mode-'+i);if(el)el.className=G.settings.maniacMode===i?'btn btn-primary':'btn btn-secondary';});}
 function setPriestMode(m){G.settings.priestMode=m;[0,1].forEach(i=>{const el=document.getElementById('priest-mode-'+i);if(el)el.className=G.settings.priestMode===i?'btn btn-primary':'btn btn-secondary';}); renderNightSteps&&G.phase==='night'&&renderNightSteps();}
 
-function saveCustomRole(){
-  const name=document.getElementById('cr-name').value.trim();if(!name)return;
-  G.customRoles.push({key:'custom_'+Date.now(),name,team:document.getElementById('cr-team').value,desc:document.getElementById('cr-desc').value,shoots:document.getElementById('cr-shoots').value==='1',icon:'🃏',badge:'rb-custom',isCustom:true});
-  renderCustomRoles();closeModal('modal-custom-role');
+function openCustomRoleModal(editKey){
+  // Reset form
+  document.getElementById('cr-edit-key').value=editKey||'';
+  document.getElementById('cr-icon').value='🃏';
+  document.getElementById('cr-name').value='';
+  document.getElementById('cr-team').value='town';
+  document.getElementById('cr-desc').value='';
+  document.getElementById('cr-shoots').checked=false;
+  document.getElementById('cr-saves').checked=false;
+  document.getElementById('cr-checks').checked=false;
+  document.getElementById('cr-wakeup').checked=true;
+  document.getElementById('cr-red').checked=true;
+  document.getElementById('cr-doc-saves').checked=true;
+  document.getElementById('cr-beauty-saves').checked=true;
+  document.getElementById('cr-inherits').checked=false;
+  document.getElementById('cr-inherit-target').style.display='none';
+  document.getElementById('cr-shooter-opts').style.display='none';
+  if(editKey){
+    const r=G.customRoles.find(r=>r.key===editKey);
+    if(r){
+      document.getElementById('cr-icon').value=r.icon||'🃏';
+      document.getElementById('cr-name').value=r.name||'';
+      document.getElementById('cr-team').value=r.team||'town';
+      document.getElementById('cr-desc').value=r.desc||'';
+      document.getElementById('cr-shoots').checked=!!r.shoots;
+      document.getElementById('cr-saves').checked=!!r.saves;
+      document.getElementById('cr-checks').checked=!!r.checks;
+      document.getElementById('cr-wakeup').checked=r.wakeup!==false;
+      document.querySelector(`input[name="cr-color"][value="${r.color||'red'}"]`).checked=true;
+      document.getElementById('cr-doc-saves').checked=r.docSaves!==false;
+      document.getElementById('cr-beauty-saves').checked=r.beautySaves!==false;
+      document.getElementById('cr-inherits').checked=!!r.inherits;
+      if(r.inherits){document.getElementById('cr-inherit-target').style.display='block';document.getElementById('cr-inherit-role').value=r.inheritRole||'';}
+      if(r.shoots)document.getElementById('cr-shooter-opts').style.display='block';
+    }
+  }
+  openModal('modal-custom-role');
 }
+
+function saveCustomRole(){
+  const name=document.getElementById('cr-name').value.trim();
+  if(!name){showWarn('Введите название роли.');return;}
+  const editKey=document.getElementById('cr-edit-key').value;
+  const color=document.querySelector('input[name="cr-color"]:checked')?.value||'red';
+  const shoots=document.getElementById('cr-shoots').checked;
+  const role={
+    key:editKey||'custom_'+Date.now(),
+    name,
+    icon:document.getElementById('cr-icon').value.trim()||'🃏',
+    team:document.getElementById('cr-team').value,
+    desc:document.getElementById('cr-desc').value.trim(),
+    shoots,
+    saves:document.getElementById('cr-saves').checked,
+    checks:document.getElementById('cr-checks').checked,
+    wakeup:document.getElementById('cr-wakeup').checked,
+    color,
+    docSaves:document.getElementById('cr-doc-saves').checked,
+    beautySaves:document.getElementById('cr-beauty-saves').checked,
+    inherits:document.getElementById('cr-inherits').checked,
+    inheritRole:document.getElementById('cr-inherit-role').value,
+    badge:'rb-custom',isCustom:true
+  };
+  if(editKey){const idx=G.customRoles.findIndex(r=>r.key===editKey);if(idx>=0)G.customRoles[idx]=role;else G.customRoles.push(role);}
+  else G.customRoles.push(role);
+  // Add to NIGHT_ORDER if wakeup and not already there
+  if(role.wakeup&&!G.settings.nightOrder.includes(role.key)){G.settings.nightOrder.push(role.key);NIGHT_ORDER=G.settings.nightOrder.slice();}
+  renderCustomRoles();renderNightOrderList();closeModal('modal-custom-role');
+}
+
 function renderCustomRoles(){
-  document.getElementById('custom-roles-list').innerHTML=G.customRoles.map((r,i)=>
-    `<div class="role-toggle"><div><span style="font-size:14px;font-weight:600;">${r.icon} ${r.name}</span></div><div class="btn-icon" onclick="G.customRoles.splice(${i},1);renderCustomRoles()">🗑</div></div>`
+  const el=document.getElementById('custom-roles-list');if(!el)return;
+  if(!G.customRoles.length){el.innerHTML='<div class="text-muted" style="font-size:12px;">Нет кастомных ролей</div>';return;}
+  el.innerHTML=G.customRoles.map((r,i)=>
+    `<div class="role-toggle"><div style="display:flex;align-items:center;gap:8px;"><span style="font-size:18px;">${r.icon}</span><div><div style="font-size:14px;font-weight:600;">${r.name}</div><div style="font-size:11px;color:var(--text2);">${{town:'🔴 Город',mafia:'⚫ Мафия',yakuza:'🟣 Якудза',neutral:'🟡 Нейтрал'}[r.team]||''} ${r.shoots?'· стреляет':''}${r.saves?'· спасает':''}${r.checks?'· проверяет':''}</div></div></div><div style="display:flex;gap:6px;"><div class="btn-icon" onclick="openCustomRoleModal('${r.key}')">✏️</div><div class="btn-icon" onclick="deleteCustomRole('${r.key}')">🗑</div></div></div>`
   ).join('');
+}
+
+// Show/hide shooter options when shoots checkbox changes
+document.addEventListener('change',function(e){
+  if(e.target.id==='cr-shoots'){document.getElementById('cr-shooter-opts').style.display=e.target.checked?'block':'none';}
+  if(e.target.id==='cr-inherits'){document.getElementById('cr-inherit-target').style.display=e.target.checked?'block':'none';}
+});
+  G.customRoles=G.customRoles.filter(r=>r.key!==key);
+  G.settings.nightOrder=G.settings.nightOrder.filter(k=>k!==key);
+  NIGHT_ORDER=G.settings.nightOrder.slice();
+  renderCustomRoles();renderNightOrderList();
 }
 
 // ===== BUILD PLAYER POOL =====
@@ -929,7 +1067,12 @@ function doStartGame(){
 }
 
 // ===== HELPERS =====
-function getRoleDef(k){if(ROLES_DEF[k])return ROLES_DEF[k];const cr=G.customRoles.find(r=>r.key===k);return cr||{name:k,icon:'🃏',team:'town',shoots:false,badge:'rb-custom',desc:''};}
+function getRoleDef(k){
+  if(ROLES_DEF[k])return ROLES_DEF[k];
+  const cr=G.customRoles.find(r=>r.key===k);
+  if(cr)return{name:cr.name,icon:cr.icon||'🃏',team:cr.team||'town',shoots:!!cr.shoots,saves:!!cr.saves,checks:!!cr.checks,badge:'rb-custom',desc:cr.desc||''};
+  return{name:k,icon:'🃏',team:'town',shoots:false,badge:'rb-custom',desc:''};
+}
 function teamBorderColor(t){return{mafia:'#888',yakuza:'#8e44ad',neutral:'#f39c12',town:'#c0392b'}[t]||'var(--border)';}
 function getPlayer(num){return G.players.find(p=>p.num===num)||null;}
 function getPlayerNumByRole(role){const p=G.players.find(p=>p.role===role&&p.alive);return p?p.num:null;}
@@ -975,11 +1118,30 @@ function updateStats(){
   const dayEl=document.getElementById('stat-day');if(dayEl)dayEl.textContent=G.dayNum||0;
 }
 
+// Перехватчики — проверить при смерти игрока с ролью roleKey
+function checkInheritors(deadRoleKey){
+  const inheritor=G.players.find(p=>p.alive&&p.role!==deadRoleKey&&(()=>{
+    const cr=G.customRoles.find(r=>r.key===p.role);
+    return cr&&cr.inherits&&cr.inheritRole===deadRoleKey;
+  })());
+  if(!inheritor)return;
+  const cr=G.customRoles.find(r=>r.key===inheritor.role);
+  const oldRole=inheritor.role;
+  inheritor.role=deadRoleKey;
+  // Update activeRoles
+  G.activeRoles[deadRoleKey]=true;
+  addLog('info',`🔄 #${inheritor.num} ${inheritor.name} (${cr?.name||oldRole}) перехватывает роль: ${getRoleDef(deadRoleKey).name}`);
+  showToast(`#${inheritor.num} перехватил роль ${getRoleDef(deadRoleKey).name}`);
+  renderPlayerList();updateStats();
+}
+
 function killPlayer(num){
   const p=getPlayer(num);if(!p||!p.alive)return;
   if(!confirm(`Убить #${p.num} ${p.name}?`))return;
+  const dr=p.role;
   p.alive=false;p.silent=false;p.immune=false;p.nominated=false;p.voteOut=false;
-  addLog('death',`💀 #${p.num} ${p.name} (${getRoleDef(p.role).name}) умерщвлён ведущим`);
+  addLog('death',`💀 #${p.num} ${p.name} (${getRoleDef(dr).name}) умерщвлён ведущим`);
+  checkInheritors(dr);
   updateStats();renderPlayerList();refreshPhaseUI();saveState();
   showToast(`#${p.num} ${p.name} убит`);
 }
@@ -1089,6 +1251,16 @@ function buildNightSteps(){
     else if(roleKey==='judge')inputs=[{id:'judge-target',label:'Иммунитет №',ph:'Номер'}];
     else if(roleKey==='ripper')inputs=[{id:'ripper-target',label:'Идёт к №',ph:'Номер'}];
     steps.push({key:roleKey,label:rd.name,icon:rd.icon,roleKey,isDead:pl.every(p=>!p.alive),inputs,desc:`Живые: ${aliveNums}`});
+  }
+  // Custom roles
+  for(const cr of G.customRoles){
+    if(!cr.wakeup)continue;
+    const pl=G.players.filter(p=>p.role===cr.key);if(!pl.length)continue;
+    const inputs=[];
+    if(cr.shoots)inputs.push({id:`cr-target-${cr.key}`,label:'Стреляет в №',ph:'Номер'});
+    if(cr.saves)inputs.push({id:`cr-save-${cr.key}`,label:'Спасает №',ph:'Номер'});
+    if(cr.checks)inputs.push({id:`cr-check-${cr.key}`,label:'Проверяет №',ph:'Номер'});
+    steps.push({key:cr.key,label:cr.name,icon:cr.icon||'🃏',roleKey:cr.key,isDead:pl.every(p=>!p.alive),inputs,desc:`Живые: ${aliveNums}`,isCustom:true});
   }
   return steps;
 }
@@ -1381,26 +1553,28 @@ function finishNight(){
       addLog('night',`🗡️ Потрошитель #${rp.num} ${rp.name} → ${pn(ripperTarget)}`);
       const tp=getPlayer(ripperTarget);
       if(tp&&tp.alive){
-        if(saved.has(ripperTarget)){announceResults.push({icon:'💊',text:`Потрошитель → #${ripperTarget}, Доктор спас.`});}
-        else if(beautyValid&&beautyTarget===ripperTarget){
-          const beautyStillLive=G.players.find(p=>p.role==='beauty'&&p.alive)&&!killed.has(beautyNum);
-          if(beautyStillLive){
-            const pp=getPlayer(ripperTarget);if(pp)pp.silent=true;
-            announceResults.push({icon:'💋',text:`Потрошитель → #${ripperTarget} (красотка). Жив, молчит.`});
+        const trd=getRoleDef(tp.role);
+        const isActive=trd.shoots||['sheriff','judge','priest','beauty','doctor','detective','ripper'].includes(tp.role);
+        const isSaved=saved.has(ripperTarget)||(beautyValid&&beautyTarget===ripperTarget&&G.players.find(p=>p.role==='beauty'&&p.alive)&&!killed.has(beautyNum));
+
+        if(G.settings.ripperMode===2){
+          // Режим 2: потрошитель всегда умирает, цель выживает если спасена
+          killed.add(rp.num);
+          if(isActive){
+            if(isSaved){announceResults.push({icon:'🗡️',text:`Потрошитель (#${rp.num}) умирает. Активная роль #${ripperTarget} ${tp.name} спасена.`});}
+            else{killed.add(ripperTarget);announceResults.push({icon:'🗡️',text:`Потрошитель (#${rp.num}) и активная роль #${ripperTarget} ${tp.name} (${trd.name}) — оба погибают.`});}
           } else {
-            // Beauty killed this night — no protection
-            const trd2=getRoleDef(getPlayer(ripperTarget)?.role||'civilian');
-            const isActive2=trd2.shoots||['sheriff','judge','priest','beauty','doctor','detective','ripper'].includes(getPlayer(ripperTarget)?.role);
-            if(isActive2){killed.add(ripperTarget);announceResults.push({icon:'🗡️',text:`Потрошитель убил #${ripperTarget}. Красотка ходила, но была убита — не защитила.`});}
-            else{if(G.settings.ripperMode===0){killed.add(rp.num);announceResults.push({icon:'🗡️',text:`Потрошитель → обыватель, умирает сам.`});}
-            else{announceResults.push({icon:'🗡️',text:`Потрошитель → обыватель. Без последствий.`});}}
+            announceResults.push({icon:'🗡️',text:`Потрошитель пошёл к обывателю — умирает сам. Обыватель жив.`});
           }
         } else {
-          const trd=getRoleDef(tp.role);
-          const isActive=trd.shoots||['sheriff','judge','priest','beauty','doctor','detective','ripper'].includes(tp.role);
-          if(isActive){killed.add(ripperTarget);announceResults.push({icon:'🗡️',text:`Потрошитель убил активную роль <strong>#${ripperTarget} ${tp.name}</strong> (${trd.name}).`});}
-          else{if(G.settings.ripperMode===0){killed.add(rp.num);announceResults.push({icon:'🗡️',text:`Потрошитель пошёл к обывателю — умирает сам (#${rp.num} ${rp.name}).`});}
-          else{announceResults.push({icon:'🗡️',text:`Потрошитель → обыватель #${ripperTarget}. Без последствий.`});}}
+          if(isSaved){announceResults.push({icon:'💊',text:`Потрошитель → #${ripperTarget}, спасён (Доктор/Красотка).`});}
+          else if(isActive){
+            killed.add(ripperTarget);
+            announceResults.push({icon:'🗡️',text:`Потрошитель убил активную роль <strong>#${ripperTarget} ${tp.name}</strong> (${trd.name}).`});
+          } else {
+            if(G.settings.ripperMode===0){killed.add(rp.num);announceResults.push({icon:'🗡️',text:`Потрошитель пошёл к обывателю — умирает сам (#${rp.num} ${rp.name}).`});}
+            else{announceResults.push({icon:'🗡️',text:`Потрошитель → обыватель #${ripperTarget}. Без последствий.`});}
+          }
         }
       }
     }
@@ -1490,7 +1664,7 @@ function finishNight(){
   }
 
   // Apply kills
-  killed.forEach(num=>{const p=getPlayer(num);if(p&&p.alive){p.alive=false;addLog('death',`💀 #${p.num} ${p.name} (${getRoleDef(p.role).name}) убит ночью`);}});
+  killed.forEach(num=>{const p=getPlayer(num);if(p&&p.alive){const dr=p.role;p.alive=false;addLog('death',`💀 #${p.num} ${p.name} (${getRoleDef(dr).name}) убит ночью`);checkInheritors(dr);}});
   G._killedThisNight=[...killed];
 
   // Apply silent — ONLY from beauty this night
@@ -1684,10 +1858,12 @@ function voteNominated(){
   if(!toVote.length){showWarn('Не выбраны игроки для выголосования (отметьте в нижней сетке).');return;}
   const votedNames=[];
   toVote.forEach(p=>{
-    if(p.immune){showToast(`⚖️ #${p.num} ${p.name} — иммунитет Судьи! Нельзя выголосовать.`);p.voteOut=false;p.nominated=false;addLog('day',`⚖️ #${p.num} ${p.name} защищён Судьёй — выголосование отменено`);return;}
+    if(p.immune){showToast(`⚖️ #${p.num} ${p.name} — иммунитет Судьи!`);p.voteOut=false;p.nominated=false;addLog('day',`⚖️ #${p.num} ${p.name} защищён Судьёй`);return;}
+    const dr=p.role;
     p.alive=false;p.voted=true;p.nominated=false;p.voteOut=false;
-    votedNames.push(`#${p.num} ${p.name} (${getRoleDef(p.role).name})`);
-    addLog('day',`🗳 #${p.num} ${p.name} (${getRoleDef(p.role).name}) выголосован`);
+    votedNames.push(`#${p.num} ${p.name} (${getRoleDef(dr).name})`);
+    addLog('day',`🗳 #${p.num} ${p.name} (${getRoleDef(dr).name}) выголосован`);
+    checkInheritors(dr);
   });
   G.nominationOrder=G.nominationOrder.filter(n=>getPlayer(n)?.alive);
   G.voteOutOrder=[];
@@ -2048,6 +2224,8 @@ function showSettingsInGame(){
   // Открываем setup с настройками ролей и музыки, скрывая лишние блоки
   renderRoleToggles();applyModeUI();applyDoctorModeUI();applyRipperModeUI();applyToggleUI();
   setManiacMode(G.settings.maniacMode||0);setPriestMode(G.settings.priestMode!==undefined?G.settings.priestMode:1);setDocStrength(G.settings.docStrength||0);
+  if(!G.settings.nightOrder)G.settings.nightOrder=NIGHT_ORDER_DEFAULT.slice();
+  renderNightOrderList();
   // Скрыть блоки только для подготовки
   document.getElementById('setup-players')&&(document.getElementById('setup-players').style.display='none');
   document.getElementById('setup-roles')&&(document.getElementById('setup-roles').style.display='none');
@@ -2075,7 +2253,7 @@ function saveNotes(){G.notes=document.getElementById('notes-text').value;closeMo
 
 // ===== MODALS =====
 function openModal(id){document.getElementById(id).classList.add('open');}
-function closeModal(id){document.getElementById(id).classList.remove('open');}
+function closeModal(id){const el=document.getElementById(id);if(el){el.classList.remove('open');if(id==='modal-qr')el.style.display='none';}}
 function showWarn(msg){document.getElementById('warn-text').innerHTML=msg;openModal('modal-warn');}
 function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.style.opacity='1';clearTimeout(t._t);t._t=setTimeout(()=>t.style.opacity='0',2500);}
 
@@ -2247,10 +2425,10 @@ function resetRememberedBtn(){
 async function markRemembered(btn){
   const gameId=window._playerGameId;
   const num=window._playerNum;
-  // Локальный флаг на игроке
-  const p=getPlayer(num);if(p)p.roleViewed=true;
+  // Локальный флаг
+  const p=getPlayer(num);if(p){p.roleViewed=true;}
   if(gameId&&num){
-    try{await db.ref('games/'+gameId+'/players/'+num+'/remembered').set(true);}catch(e){}
+    try{await db.ref('games/'+gameId+'/players/'+num).update({remembered:true});}catch(e){}
   }
   const el=btn||document.getElementById('btn-remembered');
   if(el){
@@ -2287,7 +2465,54 @@ async function checkPlayersJoined(){
 }
 
 
-async function joinGameFirebase(){
+function resetNightOrder(){G.settings.nightOrder=NIGHT_ORDER_DEFAULT.slice();NIGHT_ORDER=G.settings.nightOrder.slice();renderNightOrderList();}
+
+function renderNightOrderList(){
+  const order=G.settings.nightOrder||(G.settings.nightOrder=NIGHT_ORDER_DEFAULT.slice());
+  const names={beauty:'💋 Красотка',mafia:'🔫 Мафия',don:'🎩 Дон',yakuza:'⚔️ Якудза',detective:'🔍 Детектив',sheriff:'🔰 Шериф',doctor:'💊 Доктор',judge:'⚖️ Судья',priest:'✝️ Священник',ripper:'🗡️ Потрошитель',maniac:'🔪 Маньяк'};
+  G.customRoles.forEach(cr=>{names[cr.key]=`${cr.icon||'🃏'} ${cr.name}`;});
+  const el=document.getElementById('night-order-list');if(!el)return;
+  el.innerHTML='';
+  order.forEach((key,idx)=>{
+    const row=document.createElement('div');
+    row.style.cssText='display:flex;align-items:center;gap:8px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:8px 10px;cursor:grab;user-select:none;touch-action:none;';
+    row.draggable=true;row.dataset.idx=idx;
+    row.innerHTML=`<span style="color:var(--text3);font-size:13px;">☰</span><span style="flex:1;font-size:13px;">${names[key]||key}</span><button class="btn btn-secondary btn-sm" style="padding:2px 8px;" onclick="moveNightRole(${idx},-1)">▲</button><button class="btn btn-secondary btn-sm" style="padding:2px 8px;" onclick="moveNightRole(${idx},1)">▼</button>`;
+    row.addEventListener('dragstart',e=>{e.dataTransfer.setData('text/plain',idx);row.style.opacity='0.4';});
+    row.addEventListener('dragend',()=>{row.style.opacity='1';});
+    row.addEventListener('dragover',e=>{e.preventDefault();row.style.background='rgba(200,151,58,.15)';});
+    row.addEventListener('dragleave',()=>{row.style.background='var(--bg2)';});
+    row.addEventListener('drop',e=>{
+      e.preventDefault();row.style.background='var(--bg2)';
+      const from=parseInt(e.dataTransfer.getData('text/plain')),to=parseInt(row.dataset.idx);
+      if(from===to)return;
+      order.splice(to,0,order.splice(from,1)[0]);
+      NIGHT_ORDER=order.slice();renderNightOrderList();
+    });
+    el.appendChild(row);
+  });
+}
+
+function moveNightRole(idx,dir){
+  const arr=G.settings.nightOrder||(G.settings.nightOrder=NIGHT_ORDER_DEFAULT.slice());
+  const ni=idx+dir;if(ni<0||ni>=arr.length)return;
+  arr.splice(ni,0,arr.splice(idx,1)[0]);
+  NIGHT_ORDER=arr.slice();renderNightOrderList();
+}
+
+function showQR(){
+  const container=document.getElementById('qr-container');
+  if(!container)return;
+  container.innerHTML='';
+  // Use QR API
+  const img=document.createElement('img');
+  img.src='https://api.qrserver.com/v1/create-qr-code/?size=200x200&data='+encodeURIComponent('https://marti-rgb.github.io/mafia/');
+  img.style='width:200px;height:200px;border-radius:8px;';
+  container.appendChild(img);
+  document.getElementById('modal-qr').style.display='flex';
+}
+
+
   const pw   = document.getElementById('join-password').value.trim();
   const num  = parseInt(document.getElementById('join-num').value) || 0;
   const name = document.getElementById('join-name').value.trim();
@@ -2308,17 +2533,20 @@ async function joinGameFirebase(){
   if(activeSnap && activeSnap.val()===false){ showWarn('Игра по этому паролю уже завершена. Попросите ведущего выдать новый пароль.'); return; }
 
   const data = snap.val();
-  if(data.joined){ showWarn('Этот номер уже занят. Вы уже входили?'); return; }
+  // Allow re-entry — player may be viewing role again from same device
 
-  // Mark joined + save name
-  await ref.update({joined: true, name: name});
+  // Mark joined + save name (allow if same player re-entering)
+  await ref.update({joined: true, name: name, remembered: false});
 
   // Load settings from Firebase to build correct role description
   const gameSnap = await db.ref('games/' + gameId + '/settings').once('value');
   const gs = gameSnap.val() || {};
 
   const roleKey = data.role;
-  const rd = getRoleDef(roleKey);
+  // Custom role support
+  const customRoles = gs.customRoles || [];
+  const customRoleDef = customRoles.find(r=>r.id===roleKey);
+  const rd = customRoleDef ? {icon:customRoleDef.icon||'🃏',name:customRoleDef.name,team:customRoleDef.team||'town',desc:customRoleDef.desc||''} : getRoleDef(roleKey);
   document.getElementById('rr-icon').textContent = rd.icon;
   document.getElementById('rr-name').textContent = rd.name;
   document.getElementById('rr-team').textContent = {mafia:'⚫ Команда: Мафия',yakuza:'🟣 Команда: Якудза',neutral:'🟡 Нейтральный',town:'🔴 Команда: Мирный город'}[rd.team]||'';

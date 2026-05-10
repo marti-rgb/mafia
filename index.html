@@ -183,7 +183,7 @@ html,body{height:100%;min-height:-webkit-fill-available;width:100%;overflow:hidd
 
 <!-- MENU -->
 <div id="screen-menu" class="screen active">
-  <div class="menu-logo"><h1>МАФИЯ</h1><p>Режим ведущего</p><p style="font-size:10px;color:var(--text3);margin-top:4px;letter-spacing:1px;">v3.0</p></div>
+  <div class="menu-logo"><h1>МАФИЯ</h1><p>Режим ведущего</p><p style="font-size:10px;color:var(--text3);margin-top:4px;letter-spacing:1px;">v3.1</p></div>
   <div class="menu-btns">
     <button class="btn-menu primary" onclick="showSetup()">🎮 Новая игра</button>
     <button class="btn-menu" id="menu-join-btn" onclick="showScreen('screen-join')">👤 Войти игроком</button>
@@ -2503,14 +2503,26 @@ function moveNightRole(idx,dir){
 function showQR(){
   const container=document.getElementById('qr-container');
   if(!container)return;
-  container.innerHTML='<div style="color:var(--text2);font-size:12px;">Загрузка...</div>';
-  const img=document.createElement('img');
-  img.src='https://api.qrserver.com/v1/create-qr-code/?size=200x200&data='+encodeURIComponent('https://marti-rgb.github.io/mafia/');
-  img.style='width:200px;height:200px;border-radius:8px;display:block;';
-  img.onload=()=>{container.innerHTML='';container.appendChild(img);};
-  img.onerror=()=>{container.innerHTML='<div style="color:var(--text2);font-size:12px;">Не удалось загрузить QR.<br>Проверьте интернет.</div>';};
-  const modal=document.getElementById('modal-qr');
-  if(modal){modal.style.display='flex';}
+  container.innerHTML='';
+  const url='https://marti-rgb.github.io/mafia/';
+  // Use Google Charts QR — reliable fallback
+  const size=200;
+  const apis=[
+    `https://chart.googleapis.com/chart?cht=qr&chs=${size}x${size}&chl=${encodeURIComponent(url)}&choe=UTF-8`,
+    `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encodeURIComponent(url)}`
+  ];
+  let tried=0;
+  function tryLoad(){
+    if(tried>=apis.length){container.innerHTML=`<div style="color:var(--text2);font-size:12px;text-align:center;">QR недоступен.<br>Ссылка: <a href="${url}" style="color:var(--accent);">${url}</a></div>`;return;}
+    const img=document.createElement('img');
+    img.src=apis[tried++];
+    img.style='width:${size}px;height:${size}px;border-radius:8px;background:#fff;padding:8px;';
+    img.onerror=tryLoad;
+    img.onload=()=>{container.innerHTML='';container.appendChild(img);};
+    container.innerHTML='<div style="color:var(--text2);font-size:12px;">Загрузка QR...</div>';
+  }
+  tryLoad();
+  document.getElementById('modal-qr').style.display='flex';
 }
 
 

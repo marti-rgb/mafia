@@ -202,7 +202,7 @@ html,body{height:100%;min-height:-webkit-fill-available;width:100%;overflow:hidd
   </div>
 </div>
 <!-- QR modal -->
-<div class="modal-overlay" id="modal-qr" onclick="closeModal('modal-qr')" style="display:none;align-items:center;justify-content:center;">
+<div class="modal-overlay" id="modal-qr" onclick="closeModal('modal-qr')">
   <div class="modal" style="max-width:280px;text-align:center;" onclick="event.stopPropagation()">
     <button class="modal-close" onclick="closeModal('modal-qr')">✕</button>
     <div class="modal-title">QR — ссылка на игру</div>
@@ -2253,7 +2253,7 @@ function saveNotes(){G.notes=document.getElementById('notes-text').value;closeMo
 
 // ===== MODALS =====
 function openModal(id){document.getElementById(id).classList.add('open');}
-function closeModal(id){const el=document.getElementById(id);if(el){el.classList.remove('open');if(id==='modal-qr')el.style.display='none';}}
+function closeModal(id){const el=document.getElementById(id);if(el)el.classList.remove('open');}
 function showWarn(msg){document.getElementById('warn-text').innerHTML=msg;openModal('modal-warn');}
 function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.style.opacity='1';clearTimeout(t._t);t._t=setTimeout(()=>t.style.opacity='0',2500);}
 
@@ -2522,7 +2522,7 @@ function showQR(){
     container.innerHTML='<div style="color:var(--text2);font-size:12px;">Загрузка QR...</div>';
   }
   tryLoad();
-  document.getElementById('modal-qr').style.display='flex';
+  openModal('modal-qr');
 }
 
 

@@ -2503,13 +2503,14 @@ function moveNightRole(idx,dir){
 function showQR(){
   const container=document.getElementById('qr-container');
   if(!container)return;
-  container.innerHTML='';
-  // Use QR API
+  container.innerHTML='<div style="color:var(--text2);font-size:12px;">Загрузка...</div>';
   const img=document.createElement('img');
   img.src='https://api.qrserver.com/v1/create-qr-code/?size=200x200&data='+encodeURIComponent('https://marti-rgb.github.io/mafia/');
-  img.style='width:200px;height:200px;border-radius:8px;';
-  container.appendChild(img);
-  document.getElementById('modal-qr').style.display='flex';
+  img.style='width:200px;height:200px;border-radius:8px;display:block;';
+  img.onload=()=>{container.innerHTML='';container.appendChild(img);};
+  img.onerror=()=>{container.innerHTML='<div style="color:var(--text2);font-size:12px;">Не удалось загрузить QR.<br>Проверьте интернет.</div>';};
+  const modal=document.getElementById('modal-qr');
+  if(modal){modal.style.display='flex';}
 }
 
 

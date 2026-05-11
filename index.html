@@ -183,7 +183,7 @@ html,body{height:100%;min-height:-webkit-fill-available;width:100%;overflow:hidd
 
 <!-- MENU -->
 <div id="screen-menu" class="screen active">
-  <div class="menu-logo"><h1>МАФИЯ</h1><p>Режим ведущего</p><p style="font-size:10px;color:var(--text3);margin-top:4px;letter-spacing:1px;">v3.1</p></div>
+  <div class="menu-logo"><h1>МАФИЯ</h1><p>Режим ведущего</p><p style="font-size:10px;color:var(--text3);margin-top:4px;letter-spacing:1px;">v3.2</p></div>
   <div class="menu-btns">
     <button class="btn-menu primary" onclick="showSetup()">🎮 Новая игра</button>
     <button class="btn-menu" id="menu-join-btn" onclick="showScreen('screen-join')">👤 Войти игроком</button>
@@ -2518,7 +2518,7 @@ function showQR(){
     if(tried>=apis.length){container.innerHTML=`<div style="color:var(--text2);font-size:12px;text-align:center;">QR недоступен.<br>Ссылка: <a href="${url}" style="color:var(--accent);">${url}</a></div>`;return;}
     const img=document.createElement('img');
     img.src=apis[tried++];
-    img.style='width:${size}px;height:${size}px;border-radius:8px;background:#fff;padding:8px;';
+    img.style=`width:${size}px;height:${size}px;border-radius:8px;background:#fff;padding:8px;`;
     img.onerror=tryLoad;
     img.onload=()=>{container.innerHTML='';container.appendChild(img);};
     container.innerHTML='<div style="color:var(--text2);font-size:12px;">Загрузка QR...</div>';
@@ -2527,7 +2527,7 @@ function showQR(){
   openModal('modal-qr');
 }
 
-
+async function joinGame(){
   const pw   = document.getElementById('join-password').value.trim();
   const num  = parseInt(document.getElementById('join-num').value) || 0;
   const name = document.getElementById('join-name').value.trim();

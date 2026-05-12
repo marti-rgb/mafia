@@ -183,7 +183,7 @@ html,body{height:100%;min-height:-webkit-fill-available;width:100%;overflow:hidd
 
 <!-- MENU -->
 <div id="screen-menu" class="screen active">
-  <div class="menu-logo"><h1>МАФИЯ</h1><p>Режим ведущего</p><p style="font-size:10px;color:var(--text3);margin-top:4px;letter-spacing:1px;">v3.6</p></div>
+  <div class="menu-logo"><h1>МАФИЯ</h1><p>Режим ведущего</p><p style="font-size:10px;color:var(--text3);margin-top:4px;letter-spacing:1px;">v3.7</p></div>
   <div class="menu-btns">
     <button class="btn-menu primary" onclick="showSetup()">🎮 Новая игра</button>
     <button class="btn-menu" id="menu-join-btn" onclick="showScreen('screen-join')">👤 Войти игроком</button>
@@ -725,7 +725,7 @@ const ROLES_DEF={
   maniac:   {name:'Маньяк',     icon:'🔪',team:'neutral',shoots:true, badge:'rb-maniac',
     desc:'Играет сам за себя. Не может отказаться от выстрела. Выигрывает 1 на 1 с нестреляющим. Режим проверок настраивается.'},
   priest:   {name:'Священник',  icon:'✝️',team:'town',   shoots:false,badge:'rb-priest',
-    desc:'Ищет маньяка ночью. При нахождении — умирает молча, ведущий объявляет утром. На прощальной речи по своему выбору может сказать в стол кого нашёл. Режим настраивается.'},
+    desc:'Ищет маньяка ночью. При нахождении — умирает, так как нашёл маньяка. Может сам объявить об этом вслух. Режим настраивается.'},
   judge:    {name:'Судья',      icon:'⚖️',team:'town',   shoots:false,badge:'rb-judge',
     desc:'Даёт иммунитет одному игроку (в том числе и себе). Этого игрока нельзя выголосовать на дневном голосовании.'},
   ripper:   {name:'Потрошитель',icon:'🗡️',team:'town',   shoots:true, badge:'rb-ripper',
@@ -1696,7 +1696,7 @@ function finishNight(){
       if(tp){
         if(tp.role==='maniac'){
           killed.add(pa.num);
-          privateResults.push({icon:'✝️',text:`Священник нашёл Маньяка (#${priestTarget} ${tp.name}) — Священник (#${pa.num} ${pa.name}) погибает. Объявить утром.`});
+          privateResults.push({icon:'✝️',text:`Священник (#${pa.num} ${pa.name}) нашёл Маньяка (#${priestTarget} ${tp.name}) — Священник погибает. Он может объявить об этом сам.`});
           pa.actions.push(`Ночь ${G.nightNum}: нашёл Маньяка #${priestTarget}`);
         } else if(G.settings.priestMode===0){
           const rd2=getRoleDef(tp.role);const mafA=alive.some(p=>p.role==='mafia'||p.role==='don');
@@ -2369,7 +2369,7 @@ function showRules(){
     if(k==='doctor'){const modes=['Может лечить себя без ограничений.','Нельзя лечить одного и того же дважды подряд.','Себя можно вылечить только один раз за игру, других — нельзя повторно.'];const strength=gs.docStrength===1?'Защищает только от одного стрелка — если пришли двое и более, не спасает.':'Спасает от любого количества стрелков.';return'Защищает игрока от выстрела. '+(modes[gs.doctorMode]||modes[1])+' '+strength;}
     if(k==='beauty'){const selfRule=gs.beautySelf?'Может ходить к себе.':'Не может ходить к себе.';const repeatRule=gs.beautyRepeat?'Можно ходить к одному игроку несколько ночей подряд.':'Нельзя ходить к одному и тому же игроку две ночи подряд.';return'Приходит к игроку ночью. Если к нему идёт стреляющая роль — выживает и молчит весь день. Если стреляют в Красотку — умирает она и тот, к кому она шла. '+selfRule+' '+repeatRule;}
     if(k==='maniac'){const manModes=['Показываюсь красным пока жива мафия/якудза, после их гибели — чёрным.','Всегда показываюсь чёрным на всех проверках.'];return'Играю сам за себя. Не могу отказаться от выстрела. Выигрываю 1 на 1 с нестреляющим. '+(manModes[gs.maniacMode||0]||manModes[0]);}
-    if(k==='priest'){const priModes=['Режим: проверяю всех как Шериф. Если нахожу Маньяка — умираю молча.','Режим: ищу только Маньяка. Нашёл — умираю молча.'];return'Ищу Маньяка ночью. При нахождении умираю молча — ведущий объявляет утром. '+(priModes[gs.priestMode!==undefined?gs.priestMode:1]||priModes[1]);}
+    if(k==='priest'){const priModes=['Режим: проверяю всех как Шериф. Нашёл Маньяка — умираю, могу объявить об этом сам.','Режим: ищу только Маньяка. Нашёл — умираю, могу объявить сам.'];return'Ищу Маньяка ночью. При нахождении умираю — могу сам объявить об этом. '+(priModes[gs.priestMode!==undefined?gs.priestMode:1]||priModes[1]);}
     if(k==='ripper'){const ripMode=gs.ripperMode===0?'Если пошёл к обывателю — умирает сам.':'Если пошёл к обывателю — ничего не происходит.';return'Убивает активные роли ночью. Доктор сильнее. '+ripMode;}
     if(k==='detective'){const detMode=gs.detDiesAny?'Погибает при выстреле в любого.':'Погибает только при выстреле в красного — вместе с отстреленным красным.';return'Стреляет или проверяет — на выбор. '+detMode;}
     return rd.desc||'';
@@ -2578,6 +2578,9 @@ function fbStartListening(gameId){
     if(p && data.role && data.role !== p.role && data.roleSelfSet){
       p.role = data.role;
       renderPlayerList(); updateStats(); saveState();
+      // Refresh day/night role lists
+      if(G.phase==='day') buildDaySummary();
+      else if(G.phase==='night') renderNightSteps();
       showToast('🃏 #' + data.num + ' ' + (data.name||p.name) + ' выбрал роль: ' + getRoleDef(data.role).name);
     }
     // Check if all players remembered
@@ -2738,7 +2741,7 @@ async function joinGameFirebase(){
     if(roleGroup.style.display === 'none'){
       // First tap: show role selector, populate it
       roleSelect.innerHTML = Object.entries(ROLES_DEF).map(([k,rd])=>
-        `<option value="${k}">${rd.icon} ${rd.name}</option>`).join('');
+        `<option value="${k}"${k==='civilian'?' selected':''}>${rd.icon} ${rd.name}</option>`).join('');
       // Add custom roles if any
       const customRoles = gs.customRoles || [];
       customRoles.forEach(cr => {
@@ -2756,7 +2759,7 @@ async function joinGameFirebase(){
       `<div style="font-size:40px;margin-bottom:8px;">${rd.icon}</div>` +
       `<div style="font-size:20px;font-weight:600;color:var(--accent);">${rd.name}</div>` +
       `<div style="font-size:12px;color:var(--text2);margin-top:6px;">Игрок #${num} — ${name}</div>` +
-      `<div style="font-size:13px;margin-top:10px;">Ты уверен, что правильно выбрал роль?</div>`;
+      `<div style="font-size:13px;margin-top:10px;">Ты уверен, что правильно выбрал роль?<br><span style=\"font-size:12px;color:var(--text2)\">Сверь ещё раз с картой — изменить будет нельзя. Сделай себе скрин роли.</span></div>`;
     openModal('modal-role-confirm');
     return;
   }
@@ -2803,7 +2806,7 @@ function showRoleReveal(rd, roleKey, num, name, gs){
   if(roleKey==='doctor'){const modes=['Может лечить себя без ограничений.','Нельзя лечить одного и того же дважды подряд.','Себя можно вылечить только один раз за игру, других — нельзя повторно.'];desc='Защищает игрока от любого выстрела. '+(modes[gs.doctorMode]||modes[1]);}
   else if(roleKey==='beauty'){const sr=gs.beautySelf?'Может ходить к себе.':'Не может ходить к себе.';const rr=gs.beautyRepeat?'Можно ходить к одному подряд.':'Нельзя ходить к одному подряд.';desc='Приходит к игроку ночью. Если к нему идёт стреляющая роль — выживает и молчит весь день. '+sr+' '+rr;}
   else if(roleKey==='maniac'){const mm=['Красный пока жива мафия/якудза, потом чёрный.','Всегда чёрный.'];desc='Играю сам за себя. '+(mm[gs.maniacMode||0]||mm[0]);}
-  else if(roleKey==='priest'){const pm=['Ищу всех как шериф, умираю на маньяке.','Ищу только маньяка.'];desc='Ищу маньяка. '+(pm[gs.priestMode!==undefined?gs.priestMode:1]||pm[1]);}
+  else if(roleKey==='priest'){const pm=['Ищу всех как шериф. Нашёл маньяка — умираю, могу объявить сам.','Ищу только маньяка. Нашёл — умираю, могу объявить сам.'];desc='Ищу маньяка ночью. '+(pm[gs.priestMode!==undefined?gs.priestMode:1]||pm[1]);}
   else if(roleKey==='ripper'){desc='Убивает активные роли. '+(gs.ripperMode===0?'От обывателей — умирает.':'От обывателей — не умирает.');}
   else if(roleKey==='detective'){desc='Стреляет или проверяет. '+(gs.detDiesAny?'Умирает при выстреле в любого.':'Умирает при выстреле в красного.');}
   document.getElementById('rr-icon').textContent = rd.icon;

@@ -183,7 +183,7 @@ html,body{height:100%;min-height:-webkit-fill-available;width:100%;overflow:hidd
 
 <!-- MENU -->
 <div id="screen-menu" class="screen active">
-  <div class="menu-logo"><h1>МАФИЯ</h1><p>Режим ведущего</p><p style="font-size:10px;color:var(--text3);margin-top:4px;letter-spacing:1px;">v3.4</p></div>
+  <div class="menu-logo"><h1>МАФИЯ</h1><p>Режим ведущего</p><p style="font-size:10px;color:var(--text3);margin-top:4px;letter-spacing:1px;">v3.5</p></div>
   <div class="menu-btns">
     <button class="btn-menu primary" onclick="showSetup()">🎮 Новая игра</button>
     <button class="btn-menu" id="menu-join-btn" onclick="showScreen('screen-join')">👤 Войти игроком</button>
@@ -718,8 +718,16 @@ const ROLES_DEF={
     desc:'Стреляет ночью (может отказаться от выстрела). Убивает активные роли. Поведение с мирными настраивается. Доктор сильнее.'},
   civilian: {name:'Обыватель',  icon:'👤',team:'town',   shoots:false,badge:'rb-civilian',
     desc:'Голосует днём. Вычисляет и выголосовывает чёрных.'},
+  fan:      {name:'Поклонница', icon:'💘',team:'town',   shoots:false,badge:'rb-civilian',
+    desc:'В первую ночь выбирает кумира. Пока кумир жив — играет за мирный город. После смерти кумира перехватывает его роль. Просыпается каждую ночь для получения информации от ведущего.'},
+  taxi:     {name:'Таксист',    icon:'🚕',team:'town',   shoots:false,saves:true,badge:'rb-civilian',
+    desc:'Ночью берёт пассажира. Если в пассажира стреляли — пассажир жив. Если стреляли в таксиста — погибают оба. Может отказаться от хода. Пассажир не молчит.'},
+  journalist:{name:'Журналист', icon:'📰',team:'town',   shoots:false,checks:true,badge:'rb-civilian',
+    desc:'Ночью выбирает двух игроков (не себя). Узнаёт — в одной они команде или в разных. Мафия+Якудза+Маньяк = чёрные. Мирные = красные.'},
+  student:  {name:'Студент',    icon:'🎓',team:'town',   shoots:false,badge:'rb-civilian',
+    desc:'Каждую ночь получает информацию от ведущего. После убийства или выголосования первого стреляющего/шерифа — перехватывает его роль.'},
 };
-const NIGHT_ORDER_DEFAULT=['beauty','mafia','don','yakuza','detective','sheriff','doctor','judge','priest','ripper','maniac'];
+const NIGHT_ORDER_DEFAULT=['fan','taxi','beauty','mafia','don','yakuza','detective','sheriff','journalist','doctor','judge','priest','ripper','maniac','student'];
 let NIGHT_ORDER=NIGHT_ORDER_DEFAULT.slice();
 
 // ===== GAME STATE =====
@@ -733,13 +741,16 @@ let G={
   },
   customRoles:[],
   // DEFAULT ACTIVE ROLES
-  activeRoles:{mafia:true,don:true,yakuza:false,detective:false,sheriff:true,doctor:true,beauty:true,maniac:true,priest:false,judge:false,ripper:false},
+  activeRoles:{mafia:true,don:true,yakuza:false,detective:false,sheriff:true,doctor:true,beauty:true,maniac:true,priest:false,judge:false,ripper:false,fan:false,taxi:false,journalist:false,student:false},
   password:'',notes:'',
   beautyLastTarget:null,doctorLastTarget:null,doctorSelfUsed:false,
   currentNightStepIdx:0,_nightSteps:[],
   nominationOrder:[],voteOutOrder:[],
   playerModeActive:false,
   hostName:'',
+  fanIdol:0,
+  studentInherited:false,
+  taxiLastTarget:null,
 };
 
 // ===== NAV =====
@@ -984,6 +995,7 @@ function startGame(){
   G.password=G.playerModeActive?(document.getElementById('setup-password').value.trim()):''; 
   G.players=[];G.log=[];G.nightNum=0;G.dayNum=0;G.nightActions={};G.nightResults=null;
   G.beautyLastTarget=null;G.doctorLastTarget=null;G.doctorSelfUsed=false;
+  G.fanIdol=0;G._fanNotified=false;G.studentInherited=false;G.taxiLastTarget=null;
   G.nominationOrder=[];G.voteOutOrder=[];
 
   if(assignMode==='manual'){
@@ -1052,7 +1064,7 @@ function confirmStartGame(){
 
 function doStartGame(){
   // Sync activeRoles from actual player roles (critical for manual assignment)
-  const allRoleKeys=['detective','sheriff','doctor','beauty','maniac','priest','judge','ripper','don','yakuza'];
+  const allRoleKeys=['detective','sheriff','doctor','beauty','maniac','priest','judge','ripper','don','yakuza','fan','taxi','journalist','student'];
   allRoleKeys.forEach(k=>{G.activeRoles[k]=G.players.some(p=>p.role===k);});
   addLog('info',`🎮 Игра началась. Ведущий: ${G.hostName}. ${G.players.length} игроков. Раздача: ${assignMode==='auto'?'автоматически 🎲':'вручную ✏️'}`);
   updateStats();renderPlayerList();
@@ -1208,6 +1220,7 @@ function goNight(){
   else if(manN.length===1&&aliveN.length===2){const o=aliveN.find(p=>p.role!=='maniac');if(o&&!getRoleDef(o.role).shoots)wn='maniac';}
   if(wn&&!G.manualWinOnly){const wd={town:{icon:'🏛️',title:'Мирный город победил!',sub:'Все угрозы устранены.'},mafia:{icon:'🔫',title:'Мафия победила!',sub:'Город под контролем.'},yakuza:{icon:'⚔️',title:'Якудза победила!',sub:'Японский клан захватил власть.'},maniac:{icon:'🔪',title:'Маньяк победил!',sub:'Последний выживший.'}}[wn];document.getElementById('win-icon').textContent=wd.icon;document.getElementById('win-title').textContent=wd.title;document.getElementById('win-sub').textContent=wd.sub;addLog('info',`🏆 ${wd.title}`);saveToHistory();localStorage.removeItem(SAVE_KEY);showScreen('screen-win');return;}
   G.nightNum++;G.nightActions={};G.phase='night';G._nightSnapshot=null;G._beautyLastTargetBeforeNight=G.beautyLastTarget;
+  if(G.nightNum===1){G.fanIdol=0;G._fanNotified=false;G.studentInherited=false;G.taxiLastTarget=null;}
   G.players.forEach(p=>{if(p.alive){p.silent=false;p.immune=false;p.nominated=false;p.voteOut=false;}});
   G.nominationOrder=[];G.voteOutOrder=[];
   document.getElementById('game-phase-title').textContent=`Ночь ${G.nightNum}`;
@@ -1257,6 +1270,22 @@ function buildNightSteps(){
     else if(roleKey==='priest')inputs=[{id:'priest-target',label:G.settings.priestMode===0?'Проверяет игрока — №':'Ищет маньяка — №',ph:'Номер'}];
     else if(roleKey==='judge')inputs=[{id:'judge-target',label:'Иммунитет №',ph:'Номер'}];
     else if(roleKey==='ripper')inputs=[{id:'ripper-target',label:'Идёт к №',ph:'Номер'}];
+    else if(roleKey==='fan'){
+      if(G.nightNum===1)inputs=[{id:'fan-idol',label:'Выбирает кумира №',ph:'Номер'}];
+      else{
+        const idol=G.fanIdol?getPlayer(G.fanIdol):null;
+        const fanP=G.players.find(p=>p.role==='fan'||p.role===G._fanInheritedRole);
+        const desc=idol?`Кумир: #${G.fanIdol} ${idol.name||''} — ${idol.alive?'жив':'⚠️ МЁРТВ — сообщить поклоннице роль!'}`:'-';
+        inputs=[{id:'fan-info',label:desc,ph:'',readOnly:true}];
+      }
+    }
+    else if(roleKey==='taxi')inputs=[{id:'taxi-target',label:'Берёт пассажира №',ph:'0 = отказ'}];
+    else if(roleKey==='journalist')inputs=[{id:'journ-a',label:'Первый игрок №',ph:'Номер'},{id:'journ-b',label:'Второй игрок №',ph:'Номер'}];
+    else if(roleKey==='student'){
+      const stP=G.players.find(p=>p.role==='student');
+      const msg=G.studentInherited?'Студент уже перехватил роль':'Первый стреляющий/шериф ещё не выбыл';
+      inputs=[{id:'student-info',label:msg,ph:'',readOnly:true}];
+    }
     steps.push({key:roleKey,label:rd.name,icon:rd.icon,roleKey,isDead:pl.every(p=>!p.alive),inputs,desc:`Живые: ${aliveNums}`});
   }
   // Custom roles
@@ -1670,6 +1699,99 @@ function finishNight(){
     }
   }
 
+  // === FAN (Поклонница) ===
+  const fanP=G.players.find(p=>p.role==='fan'&&p.alive);
+  if(fanP){
+    const fanIdolInput=A['fan-idol']||0;
+    if(G.nightNum===1&&fanIdolInput>0){
+      G.fanIdol=fanIdolInput;
+      const idolP=getPlayer(fanIdolInput);
+      addLog('night',`💘 Поклонница #${fanP.num} ${fanP.name} выбрала кумира: #${fanIdolInput} ${idolP?.name||''}`);
+      fanP.actions.push(`Ночь 1: выбрала кумира #${fanIdolInput}`);
+      privateResults.push({icon:'💘',text:`Поклонница выбрала кумира: #${fanIdolInput} ${idolP?.name||''}`});
+    } else if(G.fanIdol>0){
+      const idolP=getPlayer(G.fanIdol);
+      if(idolP&&!idolP.alive&&!G._fanNotified){
+        // Idol just died this night OR was already dead — notify
+        G._fanNotified=true;
+        const idolRd=getRoleDef(idolP.role);
+        privateResults.push({icon:'💘',text:`⚠️ КУМИР ПОКЛОННИЦЫ ПОГИБ! #${G.fanIdol} ${idolP.name} (${idolRd.name}). Сообщить поклоннице #${fanP.num} ${fanP.name} роль: ${idolRd.icon} ${idolRd.name}`});
+        // Transfer role
+        const oldRole=fanP.role;
+        fanP.role=idolP.role;
+        G.activeRoles[idolP.role]=true;
+        addLog('info',`💘 #${fanP.num} ${fanP.name} (Поклонница) перехватывает роль кумира: ${idolRd.icon} ${idolRd.name}`);
+        renderPlayerList();
+      }
+    }
+  }
+
+  // === TAXI (Таксист) ===
+  const taxiTarget=A['taxi-target']||0;
+  const taxiP=G.players.find(p=>p.role==='taxi'&&p.alive);
+  if(taxiP&&taxiTarget>0){
+    const pass=getPlayer(taxiTarget);
+    if(pass&&pass.alive){
+      taxiP.actions.push(`Ночь ${G.nightNum}: взял пассажира #${taxiTarget}`);
+      // If someone shot the taxi passenger — passenger is saved
+      if(killed.has(taxiTarget)){
+        killed.delete(taxiTarget);
+        saved.add(taxiTarget);
+        addLog('night',`🚕 Таксист спас пассажира #${taxiTarget} ${pass.name} — в него стреляли, но он в машине`);
+        privateResults.push({icon:'🚕',text:`Таксист (#${taxiP.num}) спас #${taxiTarget} ${pass.name} — пассажир выжил`});
+      }
+      // If someone shot the taxi driver — both die
+      if(killed.has(taxiP.num)){
+        killed.add(taxiTarget);
+        addLog('night',`🚕 В таксиста #${taxiP.num} ${taxiP.name} стреляли — пассажир #${taxiTarget} ${pass.name} тоже погибает`);
+        privateResults.push({icon:'🚕',text:`Таксист убит — пассажир #${taxiTarget} ${pass.name} тоже погибает`});
+        announceResults.push({icon:'🚕',text:`Таксист и его пассажир погибли этой ночью`});
+      }
+      G.taxiLastTarget=taxiTarget;
+    }
+  } else if(taxiP&&taxiTarget===0){
+    taxiP.actions.push(`Ночь ${G.nightNum}: отказался от поездки`);
+    privateResults.push({icon:'🚕',text:`Таксист отказался от поездки`});
+  }
+
+  // === JOURNALIST (Журналист) ===
+  const journA=A['journ-a']||0,journB=A['journ-b']||0;
+  const journP=G.players.find(p=>p.role==='journalist'&&p.alive);
+  if(journP&&journA>0&&journB>0){
+    const pA=getPlayer(journA),pB=getPlayer(journB);
+    if(pA&&pB){
+      const isBlack=r=>['mafia','don','yakuza'].includes(r.team)||r.role==='maniac';
+      const getRoleTeamGroup=p=>{const rd=getRoleDef(p.role);if(rd.team==='mafia'||rd.team==='yakuza'||p.role==='maniac')return'black';return'red';};
+      const groupA=getRoleTeamGroup(pA),groupB=getRoleTeamGroup(pB);
+      const sameTeam=groupA===groupB;
+      const res=sameTeam?'⚡ В ОДНОЙ КОМАНДЕ':'✅ В РАЗНЫХ КОМАНДАХ';
+      privateResults.push({icon:'📰',text:`Журналист: #${journA} ${pA.name} и #${journB} ${pB.name} — ${res}`});
+      journP.actions.push(`Ночь ${G.nightNum}: #${journA} и #${journB} — ${res}`);
+      addLog('night',`📰 Журналист проверил #${journA} и #${journB}: ${res}`);
+    }
+  }
+
+  // === STUDENT (Студент) ===
+  const studentP=G.players.find(p=>p.role==='student'&&p.alive);
+  if(studentP&&!G.studentInherited){
+    // Check if any shooter or sheriff died this night
+    const shooterRoles=['mafia','don','yakuza','detective','maniac','ripper'];
+    for(const num of killed){
+      const dp=getPlayer(num);if(!dp)continue;
+      if(shooterRoles.includes(dp.role)||dp.role==='sheriff'){
+        const dr=getRoleDef(dp.role);
+        G.studentInherited=true;
+        privateResults.push({icon:'🎓',text:`⚠️ СТУДЕНТ ПЕРЕХВАТЫВАЕТ РОЛЬ! #${dp.num} ${dp.name} (${dr.name}) убит/выгол. Сообщить студенту #${studentP.num} ${studentP.name}: ${dr.icon} ${dr.name}`});
+        const oldRole=studentP.role;
+        studentP.role=dp.role;
+        G.activeRoles[dp.role]=true;
+        addLog('info',`🎓 #${studentP.num} ${studentP.name} (Студент) перехватывает роль: ${dr.icon} ${dr.name}`);
+        renderPlayerList();
+        break;
+      }
+    }
+  }
+
   // Apply kills
   killed.forEach(num=>{const p=getPlayer(num);if(p&&p.alive){const dr=p.role;p.alive=false;addLog('death',`💀 #${p.num} ${p.name} (${getRoleDef(dr).name}) убит ночью`);checkInheritors(dr);}});
   G._killedThisNight=[...killed];
@@ -1693,6 +1815,10 @@ function finishNight(){
     {k:'priest',label:'✝️ Священник',val:priestTarget>0?`Искал #${priestTarget}`:'Нет действия'},
     {k:'ripper',label:'🗡️ Потрошитель',val:ripperTarget>0?`Пошёл к #${ripperTarget}`:'Нет действия'},
     {k:'maniac',label:'🔪 Маньяк',val:maniacTarget>0?`Стрелял в #${maniacTarget}`:'Нет действия'},
+    {k:'fan',label:'💘 Поклонница',val:G.fanIdol>0?`Кумир: #${G.fanIdol} ${getPlayer(G.fanIdol)?.name||''}`:'Выбирает кумира'},
+    {k:'taxi',label:'🚕 Таксист',val:taxiTarget>0?`Пассажир: #${taxiTarget} ${getPlayer(taxiTarget)?.name||''}`:'Отказ от поездки'},
+    {k:'journalist',label:'📰 Журналист',val:journA>0&&journB>0?`Проверял #${journA} и #${journB}`:'Нет действия'},
+    {k:'student',label:'🎓 Студент',val:G.studentInherited?'Перехватил роль':'Ждёт первой смерти стреляющего'},
   ];
   rmap.forEach(r=>{
     const ak=r.key||r.k;
@@ -1871,6 +1997,19 @@ function voteNominated(){
     votedNames.push(`#${p.num} ${p.name} (${getRoleDef(dr).name})`);
     addLog('day',`🗳 #${p.num} ${p.name} (${getRoleDef(dr).name}) выголосован`);
     checkInheritors(dr);
+    // Student inherits from voted-out shooters/sheriff
+    if(!G.studentInherited){
+      const sP=G.players.find(p=>p.role==='student'&&p.alive);
+      const shooterRoles=['mafia','don','yakuza','detective','maniac','ripper'];
+      if(sP&&(shooterRoles.includes(dr)||dr==='sheriff')){
+        G.studentInherited=true;
+        const drDef=getRoleDef(dr);
+        sP.role=dr;G.activeRoles[dr]=true;
+        addLog('info',`🎓 #${sP.num} ${sP.name} (Студент) перехватывает роль выголосованного: ${drDef.icon} ${drDef.name}`);
+        showToast(`⚠️ Сообщить Студенту #${sP.num} роль: ${drDef.name}`);
+        renderPlayerList();updateStats();
+      }
+    }
   });
   G.nominationOrder=G.nominationOrder.filter(n=>getPlayer(n)?.alive);
   G.voteOutOrder=[];

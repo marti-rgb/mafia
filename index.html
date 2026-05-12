@@ -183,7 +183,7 @@ html,body{height:100%;min-height:-webkit-fill-available;width:100%;overflow:hidd
 
 <!-- MENU -->
 <div id="screen-menu" class="screen active">
-  <div class="menu-logo"><h1>МАФИЯ</h1><p>Режим ведущего</p><p style="font-size:10px;color:var(--text3);margin-top:4px;letter-spacing:1px;">v3.5</p></div>
+  <div class="menu-logo"><h1>МАФИЯ</h1><p>Режим ведущего</p><p style="font-size:10px;color:var(--text3);margin-top:4px;letter-spacing:1px;">v3.6</p></div>
   <div class="menu-btns">
     <button class="btn-menu primary" onclick="showSetup()">🎮 Новая игра</button>
     <button class="btn-menu" id="menu-join-btn" onclick="showScreen('screen-join')">👤 Войти игроком</button>
@@ -226,7 +226,11 @@ html,body{height:100%;min-height:-webkit-fill-available;width:100%;overflow:hidd
       </div>
       <div class="form-group"><label class="inp-label">Ваш номер за столом</label><input class="inp" id="join-num" type="number" placeholder="Например: 3" min="1"></div>
       <div class="form-group"><label class="inp-label">Ваше игровое имя</label><input class="inp" id="join-name" type="text" placeholder="Введите имя"></div>
-      <button class="btn btn-primary btn-full mt8" onclick="joinGameFirebase()">Получить роль →</button>
+      <div class="form-group" id="join-role-group" style="display:none">
+        <label class="inp-label">Ваша роль (выберите из карточки)</label>
+        <select class="inp" id="join-role-select"></select>
+      </div>
+      <button class="btn btn-primary btn-full mt8" onclick="joinGameDispatch()">Получить роль →</button>
     </div>
   </div>
 </div>
@@ -673,6 +677,16 @@ html,body{height:100%;min-height:-webkit-fill-available;width:100%;overflow:hidd
       </div>
     </div>
     <button class="btn btn-primary btn-full mt8" onclick="saveCustomRole()">Сохранить</button>
+  </div>
+</div>
+<div class="modal-overlay" id="modal-role-confirm">
+  <div class="modal"><button class="modal-close" onclick="closeModal('modal-role-confirm')">✕</button>
+    <div class="modal-title">🃏 Подтверди роль</div>
+    <div id="role-confirm-text" style="font-size:14px;line-height:1.6;margin-bottom:14px;text-align:center;"></div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-primary btn-full" onclick="confirmRoleManual()">✅ Да, верно</button>
+      <button class="btn btn-secondary btn-full" onclick="closeModal('modal-role-confirm')">✏️ Исправить</button>
+    </div>
   </div>
 </div>
 <div class="modal-overlay" id="modal-warn">
@@ -2091,7 +2105,14 @@ function exportReport(){
 
 // ===== JOIN =====
 function toggleJoinPw(){const inp=document.getElementById('join-password');inp.type=inp.type==='password'?'text':'password';}
-function joinGame(){
+// joinGameDispatch — routes to Firebase or local mode
+function joinGameDispatch(){
+  // Always try Firebase first if db available
+  joinGameFirebase();
+}
+
+// Local mode join (same device, no Firebase)
+function joinGameLocal(){
   const pw=document.getElementById('join-password').value.trim();
   const num=parseInt(document.getElementById('join-num').value)||0;
   const name=document.getElementById('join-name').value.trim();
@@ -2099,16 +2120,14 @@ function joinGame(){
   if(G.password&&pw!==G.password){showWarn('Неверный пароль!');return;}
   if(!G.players.length){showWarn('Ведущий ещё не раздал роли. Подождите.');return;}
   const p=G.players.find(p=>p.num===num);if(!p){showWarn(`Игрок #${num} не найден. Проверьте номер.`);return;}
-  p.name=name;savePlayerNames();
-  renderPlayerList();updateStats();
+  p.name=name;savePlayerNames();renderPlayerList();updateStats();
   p.roleViewed=true;
-  resetRememberedBtn();// сброс кнопки для каждого нового игрока
+  resetRememberedBtn();
   const rd=getRoleDef(p.role);
   document.getElementById('rr-icon').textContent=rd.icon;
   document.getElementById('rr-name').textContent=rd.name;
   document.getElementById('rr-team').textContent={mafia:'⚫ Команда: Мафия',yakuza:'🟣 Команда: Якудза',neutral:'🟡 Нейтральный',town:'🔴 Команда: Мирный город'}[rd.team]||'';
   document.getElementById('rr-desc').textContent=rd.desc||'';
-  // Show player number and name
   const rrPlayer=document.getElementById('rr-player-info');
   if(rrPlayer)rrPlayer.textContent=`Игрок #${p.num} — ${p.name}`;
   showScreen('screen-role-reveal');
@@ -2537,7 +2556,7 @@ function fbPublishGame(){
     priestMode: G.settings.priestMode!==undefined?G.settings.priestMode:1,
     totalPlayers: G.players.length
   };
-  fbGameRef.set({players: playersData, settings: settingsData, active: true, createdAt: Date.now()});
+  fbGameRef.set({players: playersData, settings: settingsData, assignMode: assignMode, active: true, createdAt: Date.now()});
   // Listen for player name updates
   fbStartListening(G._gameId);
   return true;
@@ -2554,6 +2573,12 @@ function fbStartListening(gameId){
       p.name = data.name;
       renderPlayerList(); updateStats(); saveState();
       showToast('👤 #' + data.num + ' ' + data.name + ' вошёл в игру');
+    }
+    // Manual mode: player chose their own role
+    if(p && data.role && data.role !== p.role && data.roleSelfSet){
+      p.role = data.role;
+      renderPlayerList(); updateStats(); saveState();
+      showToast('🃏 #' + data.num + ' ' + (data.name||p.name) + ' выбрал роль: ' + getRoleDef(data.role).name);
     }
     // Check if all players remembered
     fbGameRef.child('players').once('value', s => {
@@ -2683,7 +2708,10 @@ function showQR(){
   openModal('modal-qr');
 }
 
-async function joinGame(){
+// Store pending manual join data for confirmation
+let _pendingManualJoin = null;
+
+async function joinGameFirebase(){
   const pw   = document.getElementById('join-password').value.trim();
   const num  = parseInt(document.getElementById('join-num').value) || 0;
   const name = document.getElementById('join-name').value.trim();
@@ -2692,65 +2720,99 @@ async function joinGame(){
   if(!name){ showWarn('Введите ваше имя.'); return; }
 
   const gameId = buildGameId(pw);
-  const ref = db.ref('games/' + gameId + '/players/' + num);
+
+  // Check game exists and is active
+  let gameSnap;
+  try { gameSnap = await db.ref('games/' + gameId).once('value'); } catch(e){ showWarn('Ошибка соединения.'); return; }
+  if(!gameSnap.exists()){ showWarn('Игра не найдена или неверный пароль.'); return; }
+  const gameData = gameSnap.val();
+  if(gameData.active === false){ showWarn('Игра по этому паролю уже завершена.'); return; }
+
+  const isManual = gameData.assignMode === 'manual';
+  const gs = gameData.settings || {};
+
+  if(isManual){
+    // Manual mode: player chooses their own role
+    const roleGroup = document.getElementById('join-role-group');
+    const roleSelect = document.getElementById('join-role-select');
+    if(roleGroup.style.display === 'none'){
+      // First tap: show role selector, populate it
+      roleSelect.innerHTML = Object.entries(ROLES_DEF).map(([k,rd])=>
+        `<option value="${k}">${rd.icon} ${rd.name}</option>`).join('');
+      // Add custom roles if any
+      const customRoles = gs.customRoles || [];
+      customRoles.forEach(cr => {
+        roleSelect.innerHTML += `<option value="${cr.key||cr.id}">${cr.icon||'🃏'} ${cr.name}</option>`;
+      });
+      roleGroup.style.display = '';
+      showToast('Выбери свою роль из списка и нажми ещё раз');
+      return;
+    }
+    // Second tap: confirm chosen role
+    const chosenRoleKey = roleSelect.value;
+    const rd = getRoleDef(chosenRoleKey);
+    _pendingManualJoin = {pw, num, name, gameId, chosenRoleKey, gs};
+    document.getElementById('role-confirm-text').innerHTML =
+      `<div style="font-size:40px;margin-bottom:8px;">${rd.icon}</div>` +
+      `<div style="font-size:20px;font-weight:600;color:var(--accent);">${rd.name}</div>` +
+      `<div style="font-size:12px;color:var(--text2);margin-top:6px;">Игрок #${num} — ${name}</div>` +
+      `<div style="font-size:13px;margin-top:10px;">Ты уверен, что правильно выбрал роль?</div>`;
+    openModal('modal-role-confirm');
+    return;
+  }
+
+  // Auto mode: role assigned by host, read from Firebase
+  const playerRef = db.ref('games/' + gameId + '/players/' + num);
   let snap;
-  try { snap = await ref.once('value'); } catch(e){ showWarn('Ошибка соединения.'); return; }
-
-  if(!snap.exists()){ showWarn('Игра не найдена или неверный пароль.'); return; }
-
-  // Check if game is still active (new game with same password invalidates old sessions)
-  let activeSnap;
-  try { activeSnap = await db.ref('games/' + gameId + '/active').once('value'); } catch(e){}
-  if(activeSnap && activeSnap.val()===false){ showWarn('Игра по этому паролю уже завершена. Попросите ведущего выдать новый пароль.'); return; }
-
+  try { snap = await playerRef.once('value'); } catch(e){ showWarn('Ошибка соединения.'); return; }
+  if(!snap.exists()){ showWarn(`Игрок #${num} не найден. Проверьте номер.`); return; }
   const data = snap.val();
-  // Allow re-entry — player may be viewing role again from same device
 
-  // Mark joined + save name (allow if same player re-entering)
-  await ref.update({joined: true, name: name, remembered: false});
-
-  // Load settings from Firebase to build correct role description
-  const gameSnap = await db.ref('games/' + gameId + '/settings').once('value');
-  const gs = gameSnap.val() || {};
+  await playerRef.update({joined: true, name: name, remembered: false});
 
   const roleKey = data.role;
-  // Custom role support
   const customRoles = gs.customRoles || [];
-  const customRoleDef = customRoles.find(r=>r.id===roleKey);
+  const customRoleDef = customRoles.find(r=>(r.id||r.key)===roleKey);
   const rd = customRoleDef ? {icon:customRoleDef.icon||'🃏',name:customRoleDef.name,team:customRoleDef.team||'town',desc:customRoleDef.desc||''} : getRoleDef(roleKey);
+
+  showRoleReveal(rd, roleKey, num, name, gs);
+  window._playerGameId = gameId;
+  window._playerNum = num;
+}
+
+async function confirmRoleManual(){
+  closeModal('modal-role-confirm');
+  if(!_pendingManualJoin) return;
+  const {pw, num, name, gameId, chosenRoleKey, gs} = _pendingManualJoin;
+  _pendingManualJoin = null;
+
+  // Hide role selector for next player
+  document.getElementById('join-role-group').style.display = 'none';
+
+  const playerRef = db.ref('games/' + gameId + '/players/' + num);
+  await playerRef.update({joined: true, name: name, role: chosenRoleKey, roleSelfSet: true, remembered: false});
+
+  const rd = getRoleDef(chosenRoleKey);
+  showRoleReveal(rd, chosenRoleKey, num, name, gs);
+  window._playerGameId = gameId;
+  window._playerNum = num;
+}
+
+function showRoleReveal(rd, roleKey, num, name, gs){
+  let desc = rd.desc || '';
+  if(roleKey==='doctor'){const modes=['Может лечить себя без ограничений.','Нельзя лечить одного и того же дважды подряд.','Себя можно вылечить только один раз за игру, других — нельзя повторно.'];desc='Защищает игрока от любого выстрела. '+(modes[gs.doctorMode]||modes[1]);}
+  else if(roleKey==='beauty'){const sr=gs.beautySelf?'Может ходить к себе.':'Не может ходить к себе.';const rr=gs.beautyRepeat?'Можно ходить к одному подряд.':'Нельзя ходить к одному подряд.';desc='Приходит к игроку ночью. Если к нему идёт стреляющая роль — выживает и молчит весь день. '+sr+' '+rr;}
+  else if(roleKey==='maniac'){const mm=['Красный пока жива мафия/якудза, потом чёрный.','Всегда чёрный.'];desc='Играю сам за себя. '+(mm[gs.maniacMode||0]||mm[0]);}
+  else if(roleKey==='priest'){const pm=['Ищу всех как шериф, умираю на маньяке.','Ищу только маньяка.'];desc='Ищу маньяка. '+(pm[gs.priestMode!==undefined?gs.priestMode:1]||pm[1]);}
+  else if(roleKey==='ripper'){desc='Убивает активные роли. '+(gs.ripperMode===0?'От обывателей — умирает.':'От обывателей — не умирает.');}
+  else if(roleKey==='detective'){desc='Стреляет или проверяет. '+(gs.detDiesAny?'Умирает при выстреле в любого.':'Умирает при выстреле в красного.');}
   document.getElementById('rr-icon').textContent = rd.icon;
   document.getElementById('rr-name').textContent = rd.name;
   document.getElementById('rr-team').textContent = {mafia:'⚫ Команда: Мафия',yakuza:'🟣 Команда: Якудза',neutral:'🟡 Нейтральный',town:'🔴 Команда: Мирный город'}[rd.team]||'';
-
-  // Build role-specific description with actual game settings
-  let desc = rd.desc || '';
-  if(roleKey === 'doctor'){
-    const modes = ['Может лечить себя без ограничений.','Нельзя лечить одного и того же дважды подряд.','Себя можно вылечить только один раз за игру, других — нельзя повторно.'];
-    desc = 'Защищает игрока от любого выстрела. ' + (modes[gs.doctorMode] || modes[1]);
-  } else if(roleKey === 'beauty'){
-    const selfRule = gs.beautySelf ? 'Может ходить к себе.' : 'Не может ходить к себе.';
-    const repeatRule = gs.beautyRepeat ? 'Можно ходить к одному игроку несколько ночей подряд.' : 'Нельзя ходить к одному и тому же игроку две ночи подряд.';
-    desc = 'Приходит к игроку ночью. Если к нему идёт стреляющая роль — выживает и молчит весь день. Если стреляют в Красотку — умирает она и тот, к кому она шла. ' + selfRule + ' ' + repeatRule;
-  } else if(roleKey === 'maniac'){
-    const manModes=['Показываюсь красным пока жива мафия/якудза, после их гибели — чёрным.','Всегда показываюсь чёрным на всех проверках.'];
-    desc='Играю сам за себя. Не могу отказаться от выстрела. Выигрываю 1 на 1 с нестреляющим. '+(manModes[gs.maniacMode||0]||manModes[0]);
-  } else if(roleKey === 'priest'){
-    const priModes=['Режим: проверяю всех как Шериф. Если нахожу Маньяка — умираю молча.','Режим: ищу только Маньяка. Нашёл — умираю молча.'];
-    desc='Ищу Маньяка ночью. При нахождении умираю молча — ведущий объявляет утром. На прощальной речи могу по своему выбору сказать в стол кого нашёл. '+(priModes[gs.priestMode!==undefined?gs.priestMode:1]||priModes[1]);
-  } else if(roleKey === 'ripper'){
-    const ripMode = gs.ripperMode === 0 ? 'Если пошёл к обывателю — умирает сам.' : 'Если пошёл к обывателю — ничего не происходит.';
-    desc = 'Убивает активные роли ночью. Доктор сильнее. ' + ripMode;
-  } else if(roleKey === 'detective'){
-    const detMode = gs.detDiesAny ? 'Погибает при выстреле в любого вместе с отстреленным.' : 'Погибает только при выстреле в красного — вместе с отстреленным красным.';
-    desc = 'Стреляет или проверяет — на выбор. ' + detMode;
-  }
-
   document.getElementById('rr-desc').textContent = desc;
-  const rrPlayer = document.getElementById('rr-player-info');
-  if(rrPlayer) rrPlayer.textContent = 'Игрок #' + num + ' — ' + name;
-  // Store for markRemembered
-  window._playerGameId = gameId;
-  window._playerNum = num;
+  const rrPlayer=document.getElementById('rr-player-info');
+  if(rrPlayer)rrPlayer.textContent='Игрок #'+num+' — '+name;
+  resetRememberedBtn();
   showScreen('screen-role-reveal');
 }
 

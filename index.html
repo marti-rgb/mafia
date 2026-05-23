@@ -183,7 +183,7 @@ html,body{height:100%;min-height:-webkit-fill-available;width:100%;overflow:hidd
 
 <!-- MENU -->
 <div id="screen-menu" class="screen active">
-  <div class="menu-logo"><h1>МАФИЯ</h1><p>Режим ведущего</p><p style="font-size:10px;color:var(--text3);margin-top:4px;letter-spacing:1px;">v3.7</p></div>
+  <div class="menu-logo"><h1>МАФИЯ</h1><p>Режим ведущего</p><p style="font-size:10px;color:var(--text3);margin-top:4px;letter-spacing:1px;">v3.8</p></div>
   <div class="menu-btns">
     <button class="btn-menu primary" onclick="showSetup()">🎮 Новая игра</button>
     <button class="btn-menu" id="menu-join-btn" onclick="showScreen('screen-join')">👤 Войти игроком</button>
@@ -605,10 +605,11 @@ html,body{height:100%;min-height:-webkit-fill-available;width:100%;overflow:hidd
 <!-- MODALS -->
 <div class="modal-overlay" id="modal-add-player">
   <div class="modal"><button class="modal-close" onclick="closeModal('modal-add-player')">✕</button>
-    <div class="modal-title">➕ Добавить игрока</div>
+    <div class="modal-title">➕ Добавить / изменить игрока</div>
+    <div class="form-group"><label class="inp-label">Номер (пусто = авто; существующий = изменить)</label><input class="inp" id="ap-num" type="number" placeholder="Авто" min="1" oninput="onApNumChange(this.value)"></div>
     <div class="form-group"><label class="inp-label">Имя</label><input class="inp" id="ap-name" placeholder="Имя игрока"></div>
     <div class="form-group"><label class="inp-label">Роль</label><select class="inp" id="ap-role"></select></div>
-    <button class="btn btn-primary btn-full mt8" onclick="doAddPlayer()">Добавить</button>
+    <button class="btn btn-primary btn-full mt8" onclick="doAddPlayer()">Сохранить</button>
   </div>
 </div>
 <div class="modal-overlay" id="modal-notes">
@@ -698,10 +699,98 @@ html,body{height:100%;min-height:-webkit-fill-available;width:100%;overflow:hidd
 </div>
 <div class="modal-overlay" id="modal-rename">
   <div class="modal"><button class="modal-close" onclick="closeModal('modal-rename')">✕</button>
-    <div class="modal-title">✏️ Имя игрока</div>
-    <div class="form-group mb8"><label class="inp-label">Номер</label><input class="inp" id="rename-num" type="number" placeholder="#"></div>
+    <div class="modal-title">✏️ Редактировать игрока</div>
+    <div class="form-group mb8"><label class="inp-label">Номер</label><input class="inp" id="rename-num" type="number" placeholder="#" oninput="onRenameNumChange(this.value)"></div>
     <div class="form-group mb8"><label class="inp-label">Имя</label><input class="inp" id="rename-name" placeholder="Введите имя"></div>
+    <div class="form-group mb8"><label class="inp-label">Роль</label><select class="inp" id="rename-role"></select></div>
+    <div class="form-group mb8"><label class="inp-label">Статус</label>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-sm" style="flex:1" id="rename-alive-btn" onclick="setRenameAlive(true)">✅ Живой</button>
+        <button class="btn btn-sm" style="flex:1" id="rename-dead-btn" onclick="setRenameAlive(false)">💀 Мёртвый</button>
+      </div>
+    </div>
     <button class="btn btn-primary btn-full mt8" onclick="savePlayerName()">Сохранить</button>
+  </div>
+</div>
+
+<!-- Настройки в игре (модалка — не меняет экран) -->
+<div class="modal-overlay" id="modal-ingame-settings">
+  <div class="modal" style="max-height:90vh;overflow-y:auto;">
+    <button class="modal-close" onclick="closeModal('modal-ingame-settings')">✕</button>
+    <div class="modal-title">⚙️ Настройки игры</div>
+    <div class="card">
+      <div class="card-title">Красотка</div>
+      <div class="setting-row"><div><div class="setting-label">Может ходить к себе</div></div><div class="toggle-switch" id="ig-tog-beautySelf" onclick="igToggle('beautySelf','ig-tog-beautySelf')"></div></div>
+      <div class="setting-row"><div><div class="setting-label">Может ходить к одному подряд</div></div><div class="toggle-switch" id="ig-tog-beautyRepeat" onclick="igToggle('beautyRepeat','ig-tog-beautyRepeat')"></div></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Доктор — режим</div>
+      <div style="display:flex;flex-direction:column;gap:6px;">
+        <button class="btn btn-secondary" id="ig-dmode-0" onclick="igSetDoctorMode(0)">Без ограничений</button>
+        <button class="btn btn-secondary" id="ig-dmode-1" onclick="igSetDoctorMode(1)">Через раз (вкл. себя)</button>
+        <button class="btn btn-secondary" id="ig-dmode-2" onclick="igSetDoctorMode(2)">Через раз, к себе 1 раз</button>
+      </div>
+      <div class="card-title" style="margin-top:10px;">Сила защиты</div>
+      <div style="display:flex;flex-direction:column;gap:6px;">
+        <button class="btn btn-secondary" id="ig-docstr-0" onclick="igSetDocStrength(0)">Спасает всегда</button>
+        <button class="btn btn-secondary" id="ig-docstr-1" onclick="igSetDocStrength(1)">Только от одного стрелка</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Потрошитель — режим</div>
+      <div style="display:flex;flex-direction:column;gap:6px;">
+        <button class="btn btn-secondary" id="ig-rmode-0" onclick="igSetRipperMode(0)">От обывателей — умирает</button>
+        <button class="btn btn-secondary" id="ig-rmode-1" onclick="igSetRipperMode(1)">От обывателей — не умирает</button>
+        <button class="btn btn-secondary" id="ig-rmode-2" onclick="igSetRipperMode(2)">Умирает сам, активная выживает</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Детектив</div>
+      <div class="setting-row"><div><div class="setting-label">Умирает при выстреле в любого</div></div><div class="toggle-switch" id="ig-tog-detDiesAny" onclick="igToggle('detDiesAny','ig-tog-detDiesAny')"></div></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Маньяк</div>
+      <div style="display:flex;flex-direction:column;gap:6px;">
+        <button class="btn btn-secondary" id="ig-maniac-0" onclick="igSetManiacMode(0)">Красный пока жива мафия</button>
+        <button class="btn btn-secondary" id="ig-maniac-1" onclick="igSetManiacMode(1)">Всегда чёрный</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Священник</div>
+      <div style="display:flex;flex-direction:column;gap:6px;">
+        <button class="btn btn-secondary" id="ig-priest-0" onclick="igSetPriestMode(0)">Ищет всех, умирает на маньяке</button>
+        <button class="btn btn-secondary" id="ig-priest-1" onclick="igSetPriestMode(1)">Ищет только маньяка</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Интерфейс</div>
+      <div class="setting-row"><div><div class="setting-label">Показывать роли в списке</div></div><div class="toggle-switch" id="ig-tog-showRoles" onclick="igToggle('showRoles','ig-tog-showRoles')"></div></div>
+    </div>
+    <div class="card">
+      <div class="card-title">🎵 Музыка</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;">
+        <button class="btn btn-secondary btn-sm" id="ig-mmode-manual" onclick="setMusicMode('manual');igSyncMusicBtns()" style="flex:1">🎛 Вручную</button>
+        <button class="btn btn-secondary btn-sm" id="ig-mmode-auto" onclick="setMusicMode('auto');igSyncMusicBtns()" style="flex:1">🌙 Авто</button>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <span class="inp-label" style="white-space:nowrap;margin-bottom:0;">Громкость</span>
+        <input type="range" id="ig-music-volume" min="1" max="100" value="20" style="flex:1;accent-color:var(--accent);" oninput="setMusicVolume(this.value);document.getElementById('ig-vol-label').textContent=this.value">
+        <span id="ig-vol-label" style="font-size:12px;color:var(--text2);width:30px;">20</span>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">➕ Добавить / изменить игрока</div>
+      <div class="form-group"><label class="inp-label">Номер (существующий = изменить; новый = добавить)</label><input class="inp" id="ig-ap-num" type="number" placeholder="Номер" min="1" oninput="igOnPlayerNumChange(this.value)"></div>
+      <div class="form-group"><label class="inp-label">Имя</label><input class="inp" id="ig-ap-name" placeholder="Имя игрока"></div>
+      <div class="form-group"><label class="inp-label">Роль</label><select class="inp" id="ig-ap-role"></select></div>
+      <div class="form-group"><label class="inp-label">Статус</label>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-sm" style="flex:1" id="ig-alive-btn" onclick="igSetAlive(true)">✅ Живой</button>
+          <button class="btn btn-sm" style="flex:1" id="ig-dead-btn" onclick="igSetAlive(false)">💀 Мёртвый</button>
+        </div>
+      </div>
+      <button class="btn btn-primary btn-full mt8" onclick="igSavePlayer()">Сохранить игрока</button>
+    </div>
   </div>
 </div>
 
@@ -1190,18 +1279,54 @@ function refreshPhaseUI(){
   if(G.phase==='night'){renderNightSteps();}
   else if(G.phase==='day'){buildDaySummary();buildVoteGrid();}
 }
-function openRename(num){const p=getPlayer(num);document.getElementById('rename-num').value=num;document.getElementById('rename-name').value=p?p.name:'';openModal('modal-rename');}
-function savePlayerName(){
-  const num=parseInt(document.getElementById('rename-num').value),name=document.getElementById('rename-name').value.trim();
+function _populateRoleSelect(selId){
+  const allKeys=Object.keys(ROLES_DEF).concat(G.customRoles.map(r=>r.key));
+  document.getElementById(selId).innerHTML=allKeys.map(k=>{const rd=getRoleDef(k);return`<option value="${k}">${rd.icon} ${rd.name}</option>`;}).join('');
+}
+function openRename(num){
   const p=getPlayer(num);
-  if(p&&name){
-    p.name=name;
-    addLog('info',`✏️ #${num} переименован в «${name}»`);
+  _populateRoleSelect('rename-role');
+  document.getElementById('rename-num').value=num;
+  document.getElementById('rename-name').value=p?p.name:'';
+  if(p)document.getElementById('rename-role').value=p.role;
+  const alive=p?p.alive:true;
+  document.getElementById('rename-alive-btn').className='btn btn-sm '+(alive?'btn-success':'btn-secondary');
+  document.getElementById('rename-dead-btn').className='btn btn-sm '+(!alive?'btn-danger':'btn-secondary');
+  document.getElementById('rename-alive-btn').dataset.val=alive?'1':'0';
+  openModal('modal-rename');
+}
+function onRenameNumChange(v){
+  const p=getPlayer(parseInt(v)||0);
+  if(!p)return;
+  document.getElementById('rename-name').value=p.name;
+  document.getElementById('rename-role').value=p.role;
+  const alive=p.alive;
+  document.getElementById('rename-alive-btn').className='btn btn-sm '+(alive?'btn-success':'btn-secondary');
+  document.getElementById('rename-dead-btn').className='btn btn-sm '+(!alive?'btn-danger':'btn-secondary');
+  document.getElementById('rename-alive-btn').dataset.val=alive?'1':'0';
+}
+function setRenameAlive(val){
+  document.getElementById('rename-alive-btn').className='btn btn-sm '+(val?'btn-success':'btn-secondary');
+  document.getElementById('rename-dead-btn').className='btn btn-sm '+(!val?'btn-danger':'btn-secondary');
+  document.getElementById('rename-alive-btn').dataset.val=val?'1':'0';
+}
+function savePlayerName(){
+  const num=parseInt(document.getElementById('rename-num').value);
+  const name=document.getElementById('rename-name').value.trim();
+  const role=document.getElementById('rename-role').value;
+  const aliveVal=document.getElementById('rename-alive-btn').dataset.val!=='0';
+  const p=getPlayer(num);
+  if(p){
+    if(name)p.name=name;
+    if(role&&role!==p.role){addLog('info',`🃏 #${num} роль: ${getRoleDef(p.role).name} → ${getRoleDef(role).name}`);p.role=role;_syncActiveRoles();}
+    if(p.alive!==aliveVal){p.alive=aliveVal;if(!aliveVal){p.silent=false;p.immune=false;p.nominated=false;p.voteOut=false;}addLog('info',`${aliveVal?'✚':'💀'} #${num} статус изменён`);}
+    if(name)addLog('info',`✏️ #${num} обновлён: ${name}`);
     savePlayerNames();
   }
-  closeModal('modal-rename');renderPlayerList();refreshPhaseUI();saveState();
+  closeModal('modal-rename');renderPlayerList();updateStats();refreshPhaseUI();saveState();
 }
 function savePlayerNames(){try{const n={};G.players.forEach(p=>n[p.num]=p.name);localStorage.setItem('mafia_names',JSON.stringify(n));}catch(e){}}
+function _syncActiveRoles(){const keys=['detective','sheriff','doctor','beauty','maniac','priest','judge','ripper','don','yakuza','fan','taxi','journalist','student'];keys.forEach(k=>{G.activeRoles[k]=G.players.some(p=>p.role===k);});}
 
 function showPlayerDetail(num){
   const p=getPlayer(num);if(!p)return;
@@ -2385,25 +2510,76 @@ function showRules(){
 let _settingsCalledFromGame=false;
 function showSettings(){_settingsCalledFromGame=false;applyToggleUI();showScreen('screen-settings');}
 function showSettingsInGame(){
-  _settingsCalledFromGame=true;
-  // Открываем setup с настройками ролей и музыки, скрывая лишние блоки
-  renderRoleToggles();applyModeUI();applyDoctorModeUI();applyRipperModeUI();applyToggleUI();
-  setManiacMode(G.settings.maniacMode||0);setPriestMode(G.settings.priestMode!==undefined?G.settings.priestMode:1);setDocStrength(G.settings.docStrength||0);
-  if(!G.settings.nightOrder)G.settings.nightOrder=NIGHT_ORDER_DEFAULT.slice();
-  renderNightOrderList();
-  // Скрыть блоки только для подготовки
-  document.getElementById('setup-players')&&(document.getElementById('setup-players').style.display='none');
-  document.getElementById('setup-roles')&&(document.getElementById('setup-roles').style.display='none');
-  // Показать только настройки
-  const settingsTab=document.getElementById('setup-settings');
-  if(settingsTab)settingsTab.style.display='block';
-  // Обновить кнопки вкладок
-  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
-  showScreen('screen-setup');
+  ['beautySelf','beautyRepeat','detDiesAny','showRoles'].forEach(k=>{
+    const el=document.getElementById('ig-tog-'+k);if(el)el.classList.toggle('on',!!G.settings[k]);
+  });
+  [0,1,2].forEach(i=>{const e=document.getElementById('ig-dmode-'+i);if(e)e.className=G.settings.doctorMode===i?'btn btn-primary':'btn btn-secondary';});
+  [0,1].forEach(i=>{const e=document.getElementById('ig-docstr-'+i);if(e)e.className=(G.settings.docStrength||0)===i?'btn btn-primary':'btn btn-secondary';});
+  [0,1,2].forEach(i=>{const e=document.getElementById('ig-rmode-'+i);if(e)e.className=G.settings.ripperMode===i?'btn btn-primary':'btn btn-secondary';});
+  [0,1].forEach(i=>{const e=document.getElementById('ig-maniac-'+i);if(e)e.className=(G.settings.maniacMode||0)===i?'btn btn-primary':'btn btn-secondary';});
+  [0,1].forEach(i=>{const e=document.getElementById('ig-priest-'+i);if(e)e.className=(G.settings.priestMode!==undefined?G.settings.priestMode:1)===i?'btn btn-primary':'btn btn-secondary';});
+  const vol=G.settings.musicVolume||20;
+  const vs=document.getElementById('ig-music-volume');if(vs)vs.value=vol;
+  const vl=document.getElementById('ig-vol-label');if(vl)vl.textContent=vol;
+  igSyncMusicBtns();
+  _populateRoleSelect('ig-ap-role');
+  document.getElementById('ig-ap-num').value='';
+  document.getElementById('ig-ap-name').value='';
+  document.getElementById('ig-alive-btn').className='btn btn-sm btn-success';
+  document.getElementById('ig-dead-btn').className='btn btn-sm btn-secondary';
+  document.getElementById('ig-alive-btn').dataset.val='1';
+  openModal('modal-ingame-settings');
+}
+function igSyncMusicBtns(){
+  const isAuto=G.settings.musicMode==='auto';
+  const ma=document.getElementById('ig-mmode-auto'),mm=document.getElementById('ig-mmode-manual');
+  if(ma)ma.className=isAuto?'btn btn-primary btn-sm':'btn btn-secondary btn-sm';
+  if(mm)mm.className=!isAuto?'btn btn-primary btn-sm':'btn btn-secondary btn-sm';
+}
+function igToggle(key,elId){G.settings[key]=!G.settings[key];const el=document.getElementById(elId);if(el)el.classList.toggle('on',G.settings[key]);if(key==='showRoles')renderPlayerList();saveState();}
+function igSetDoctorMode(m){G.settings.doctorMode=m;[0,1,2].forEach(i=>{const e=document.getElementById('ig-dmode-'+i);if(e)e.className=m===i?'btn btn-primary':'btn btn-secondary';});saveState();}
+function igSetDocStrength(m){G.settings.docStrength=m;[0,1].forEach(i=>{const e=document.getElementById('ig-docstr-'+i);if(e)e.className=m===i?'btn btn-primary':'btn btn-secondary';});saveState();}
+function igSetRipperMode(m){G.settings.ripperMode=m;[0,1,2].forEach(i=>{const e=document.getElementById('ig-rmode-'+i);if(e)e.className=m===i?'btn btn-primary':'btn btn-secondary';});saveState();}
+function igSetManiacMode(m){G.settings.maniacMode=m;[0,1].forEach(i=>{const e=document.getElementById('ig-maniac-'+i);if(e)e.className=m===i?'btn btn-primary':'btn btn-secondary';});saveState();}
+function igSetPriestMode(m){G.settings.priestMode=m;[0,1].forEach(i=>{const e=document.getElementById('ig-priest-'+i);if(e)e.className=m===i?'btn btn-primary':'btn btn-secondary';});saveState();}
+function igOnPlayerNumChange(v){
+  const p=getPlayer(parseInt(v)||0);if(!p)return;
+  document.getElementById('ig-ap-name').value=p.name;
+  document.getElementById('ig-ap-role').value=p.role;
+  const alive=p.alive;
+  document.getElementById('ig-alive-btn').className='btn btn-sm '+(alive?'btn-success':'btn-secondary');
+  document.getElementById('ig-dead-btn').className='btn btn-sm '+(!alive?'btn-danger':'btn-secondary');
+  document.getElementById('ig-alive-btn').dataset.val=alive?'1':'0';
+}
+function igSetAlive(val){
+  document.getElementById('ig-alive-btn').className='btn btn-sm '+(val?'btn-success':'btn-secondary');
+  document.getElementById('ig-dead-btn').className='btn btn-sm '+(!val?'btn-danger':'btn-secondary');
+  document.getElementById('ig-alive-btn').dataset.val=val?'1':'0';
+}
+function igSavePlayer(){
+  const numInput=parseInt(document.getElementById('ig-ap-num').value)||0;
+  const nameVal=document.getElementById('ig-ap-name').value.trim();
+  const role=document.getElementById('ig-ap-role').value||'civilian';
+  const aliveVal=document.getElementById('ig-alive-btn').dataset.val!=='0';
+  if(!numInput){showWarn('Введите номер игрока.');return;}
+  const existing=getPlayer(numInput);
+  if(existing){
+    if(nameVal)existing.name=nameVal;
+    if(role!==existing.role){addLog('info',`🃏 #${numInput} роль: ${getRoleDef(existing.role).name} → ${getRoleDef(role).name}`);existing.role=role;_syncActiveRoles();}
+    if(existing.alive!==aliveVal){existing.alive=aliveVal;if(!aliveVal){existing.silent=false;existing.immune=false;existing.nominated=false;existing.voteOut=false;}addLog('info',`${aliveVal?'✚':'💀'} #${numInput} статус изменён`);}
+    addLog('info',`✏️ #${numInput} ${existing.name} обновлён`);
+  } else {
+    const name=nameVal||`Игрок ${numInput}`;
+    G.players.push({num:numInput,name,role,alive:aliveVal,voted:false,silent:false,immune:false,nominated:false,voteOut:false,actions:[]});
+    G.players.sort((a,b)=>a.num-b.num);_syncActiveRoles();
+    addLog('info',`➕ Добавлен #${numInput} ${nameVal||name} (${getRoleDef(role).name})`);
+  }
+  updateStats();renderPlayerList();refreshPhaseUI();saveState();
+  showToast(`#${numInput} сохранён`);
+  document.getElementById('ig-ap-num').value='';document.getElementById('ig-ap-name').value='';
 }
 function closeSettings(){
   if(_settingsCalledFromGame){
-    // Восстановить нормальный вид setup
     document.getElementById('setup-players')&&(document.getElementById('setup-players').style.display='');
     document.getElementById('setup-roles')&&(document.getElementById('setup-roles').style.display='');
     showScreen('screen-game');
@@ -2477,21 +2653,41 @@ function importSettingsFile(input){
 
 // ===== ADD PLAYER DURING GAME =====
 function openAddPlayer(){
-  const allKeys=Object.keys(ROLES_DEF).concat(G.customRoles.map(r=>r.key));
-  document.getElementById('ap-role').innerHTML=allKeys.map(k=>{const rd=getRoleDef(k);return`<option value="${k}">${rd.name}</option>`;}).join('');
+  _populateRoleSelect('ap-role');
+  document.getElementById('ap-num').value='';
   document.getElementById('ap-name').value='';
+  document.getElementById('ap-role').value='civilian';
   openModal('modal-add-player');
 }
+function onApNumChange(v){
+  const p=getPlayer(parseInt(v)||0);
+  if(p){document.getElementById('ap-name').value=p.name;document.getElementById('ap-role').value=p.role;}
+}
 function doAddPlayer(){
-  const name=document.getElementById('ap-name').value.trim()||'Новый игрок';
+  const nameVal=document.getElementById('ap-name').value.trim();
   const role=document.getElementById('ap-role').value||'civilian';
-  const maxNum=G.players.reduce((m,p)=>Math.max(m,p.num),0);
-  const num=maxNum+1;
-  G.players.push({num,name,role,alive:true,voted:false,silent:false,immune:false,nominated:false,voteOut:false,actions:[]});
-  addLog('info',`➕ Добавлен игрок #${num} ${name} (${getRoleDef(role).name})`);
+  const numInput=parseInt(document.getElementById('ap-num').value)||0;
+  if(numInput>0){
+    const existing=getPlayer(numInput);
+    if(existing){
+      if(nameVal)existing.name=nameVal;
+      if(role!==existing.role){addLog('info',`🃏 #${numInput} роль: ${getRoleDef(existing.role).name} → ${getRoleDef(role).name}`);existing.role=role;_syncActiveRoles();}
+      addLog('info',`✏️ Игрок #${numInput} обновлён: ${existing.name} / ${getRoleDef(role).name}`);
+      closeModal('modal-add-player');updateStats();renderPlayerList();refreshPhaseUI();saveState();showToast(`#${numInput} обновлён`);return;
+    }
+    const name=nameVal||`Игрок ${numInput}`;
+    G.players.push({num:numInput,name,role,alive:true,voted:false,silent:false,immune:false,nominated:false,voteOut:false,actions:[]});
+    G.players.sort((a,b)=>a.num-b.num);_syncActiveRoles();
+    addLog('info',`➕ Добавлен #${numInput} ${name} (${getRoleDef(role).name})`);
+  } else {
+    const maxNum=G.players.reduce((m,p)=>Math.max(m,p.num),0);const num=maxNum+1;
+    const name=nameVal||`Игрок ${num}`;
+    G.players.push({num,name,role,alive:true,voted:false,silent:false,immune:false,nominated:false,voteOut:false,actions:[]});
+    _syncActiveRoles();
+    addLog('info',`➕ Добавлен #${num} ${name} (${getRoleDef(role).name})`);
+  }
   updateStats();renderPlayerList();refreshPhaseUI();saveState();
-  closeModal('modal-add-player');
-  showToast(`Игрок #${num} ${name} добавлен`);
+  closeModal('modal-add-player');showToast('Игрок сохранён');
 }
 
 // ===== INIT =====

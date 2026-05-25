@@ -183,7 +183,7 @@ html,body{height:100%;min-height:-webkit-fill-available;width:100%;overflow:hidd
 
 <!-- MENU -->
 <div id="screen-menu" class="screen active">
-  <div class="menu-logo"><h1>МАФИЯ</h1><p>Режим ведущего</p><p style="font-size:10px;color:var(--text3);margin-top:4px;letter-spacing:1px;">v3.8</p></div>
+  <div class="menu-logo"><h1>МАФИЯ</h1><p>Режим ведущего</p><p style="font-size:10px;color:var(--text3);margin-top:4px;letter-spacing:1px;">v3.9</p></div>
   <div class="menu-btns">
     <button class="btn-menu primary" onclick="showSetup()">🎮 Новая игра</button>
     <button class="btn-menu" id="menu-join-btn" onclick="showScreen('screen-join')">👤 Войти игроком</button>
@@ -927,7 +927,7 @@ function updateSetupPreview(){
 function renderManualPlayers(){
   const n=parseInt(document.getElementById('setup-players').value)||10;
   const useFilter=G.settings.filterManual;
-  const allKeys=Object.keys(ROLES_DEF).concat(G.customRoles.map(r=>r.key));
+  const allKeys=['civilian'].concat(Object.keys(ROLES_DEF).filter(k=>k!=='civilian')).concat(G.customRoles.map(r=>r.key));
   const filtered=useFilter?allKeys.filter(k=>k==='civilian'||G.activeRoles[k]):allKeys;
   const opts=filtered.map(k=>{const rd=getRoleDef(k);return`<option value="${k}">${rd.name}</option>`;}).join('');
   let h='';
@@ -2931,6 +2931,10 @@ async function joinGameFirebase(){
   const gs = gameData.settings || {};
 
   if(isManual){
+    // Проверка: уже вошёл с другим номером
+    if(window._playerGameId === gameId && window._playerNum && window._playerNum !== num){
+      showWarn(`⚠️ Ты уже вошёл как игрок #${window._playerNum} в этой игре.`);return;
+    }
     // Manual mode: player chooses their own role
     const roleGroup = document.getElementById('join-role-group');
     const roleSelect = document.getElementById('join-role-select');
@@ -2966,6 +2970,15 @@ async function joinGameFirebase(){
   try { snap = await playerRef.once('value'); } catch(e){ showWarn('Ошибка соединения.'); return; }
   if(!snap.exists()){ showWarn(`Игрок #${num} не найден. Проверьте номер.`); return; }
   const data = snap.val();
+
+  // Проверка: игрок уже заходил с другим номером в этой сессии
+  if(window._playerGameId === gameId && window._playerNum && window._playerNum !== num){
+    showWarn(`⚠️ Ты уже вошёл как игрок #${window._playerNum} в этой игре. Смена номера запрещена.`);return;
+  }
+  // Проверка: этот номер уже занят другим игроком (joined + другое имя)
+  if(data.joined && data.name && data.name !== name){
+    if(!confirm(`⚠️ Место #${num} уже занято игроком «${data.name}». Войти всё равно?`))return;
+  }
 
   await playerRef.update({joined: true, name: name, remembered: false});
 

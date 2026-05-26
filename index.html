@@ -183,7 +183,7 @@ html,body{height:100%;min-height:-webkit-fill-available;width:100%;overflow:hidd
 
 <!-- MENU -->
 <div id="screen-menu" class="screen active">
-  <div class="menu-logo"><h1>МАФИЯ</h1><p>Режим ведущего</p><p style="font-size:10px;color:var(--text3);margin-top:4px;letter-spacing:1px;">v3.9</p></div>
+  <div class="menu-logo"><h1>МАФИЯ</h1><p>Режим ведущего</p><p style="font-size:10px;color:var(--text3);margin-top:4px;letter-spacing:1px;">v4.3</p></div>
   <div class="menu-btns">
     <button class="btn-menu primary" onclick="showSetup()">🎮 Новая игра</button>
     <button class="btn-menu" id="menu-join-btn" onclick="showScreen('screen-join')">👤 Войти игроком</button>
@@ -500,10 +500,10 @@ html,body{height:100%;min-height:-webkit-fill-available;width:100%;overflow:hidd
     <div class="card">
       <div class="card-title">Управление фазами</div>
       <div class="row mb8">
-        <button class="btn btn-secondary" style="flex:1" onclick="returnToNightEdit()">↩ Вернуться к правке ночи</button>
+        <button class="btn btn-secondary" style="flex:1" onclick="addLog('info','🔘 Кнопка: «Вернуться к правке ночи»');returnToNightEdit()">↩ Вернуться к правке ночи</button>
         <button class="btn btn-secondary" style="flex:1" onclick="checkWin()">🏆 Победа?</button>
       </div>
-      <button class="btn btn-secondary btn-full" onclick="goNight()">🌙 Следующая ночь</button>
+      <button class="btn btn-secondary btn-full" onclick="safeGoNight()">🌙 Следующая ночь</button>
     </div>
   </div>
   <div id="gtab-log" class="scroll-area" style="display:none">
@@ -623,7 +623,7 @@ html,body{height:100%;min-height:-webkit-fill-available;width:100%;overflow:hidd
   <div class="modal"><button class="modal-close" onclick="returnToNightEdit()">✕</button>
     <div class="modal-title">🌙 Итоги ночи</div>
     <div id="night-results-modal"></div>
-    <button class="btn btn-primary btn-full mt8" onclick="closeModal('modal-night-results');goDay()">☀ К фазе дня</button>
+    <button class="btn btn-primary btn-full mt8" onclick="addLog('info','🔘 Кнопка: «К фазе дня»');closeModal('modal-night-results');goDay()">☀ К фазе дня</button>
   </div>
 </div>
 <div class="modal-overlay" id="modal-player-detail">
@@ -1345,6 +1345,13 @@ function showPlayerDetail(num){
 function toggleSilent(num){const p=getPlayer(num);if(!p)return;p.silent=!p.silent;updateStats();renderPlayerList();}
 
 // ===== NIGHT =====
+function safeGoNight(){
+  if(G.phase==='night'&&!G.nightResults){
+    if(!confirm(`⚠️ Ночь ${G.nightNum} ещё не завершена. Перейти к следующей ночи?`))return;
+  }
+  addLog('info',`🔘 Кнопка: «Следующая ночь»`);
+  goNight();
+}
 function goNight(){
   // Auto-check win before starting next night
   const aliveN=G.players.filter(p=>p.alive);
@@ -1552,11 +1559,8 @@ function markNoShot(team){
 
 // ===== FINISH NIGHT =====
 function finishNight(){
+  addLog('info',`🔘 Кнопка: «Завершить ночь»`);
   const A=G.nightActions;
-  // Save player state snapshot BEFORE processing this night (for returnToNightEdit rollback)
-  G._nightSnapshot=G.players.map(p=>({...p,actions:[...p.actions]}));
-  G._doctorLastTargetSnapshot=G.doctorLastTarget;
-  G._doctorSelfUsedSnapshot=G.doctorSelfUsed;
   const alive=G.players.filter(p=>p.alive);
 
   // Check missing — warn but allow proceed
@@ -1646,17 +1650,20 @@ function finishNight(){
   const processShot=(targetNum,shooterLabel,verb='стрелял')=>{
     if(!targetNum||targetNum<0)return;
     const tp=getPlayer(targetNum);
-    if(!tp||!tp.alive){announceResults.push({icon:'💨',text:`${shooterLabel} ${verb} в #${targetNum} — уже мёртв.`});return;}
+    if(!tp||!tp.alive){privateResults.push({icon:'💨',text:`${shooterLabel} ${verb} в #${targetNum} — уже мёртв.`});return;}
     // Doctor saves — с учётом силы защиты
     if(saved.has(targetNum)){
       const multiShot=G.settings.docStrength===1&&(shooterCount[targetNum]||0)>1;
       if(multiShot){
         // Слабый доктор — не спасает при 2+ стрелках
         killed.add(targetNum);
-        announceResults.push({icon:'💀',text:`${shooterLabel} ${verb} в <strong>#${targetNum} ${tp.name}</strong> — Доктор защищал, но не смог нейтрализовать несколько угроз.`});
+        announceResults.push({icon:'💀',text:`${shooterLabel} ${verb} в <strong>#${targetNum} ${tp.name}</strong>.`});
+        privateResults.push({icon:'💊',text:`Доктор защищал #${targetNum}, но было несколько стрелков — не спас.`});
         return;
       }
-      announceResults.push({icon:'💊',text:`${shooterLabel} ${verb} — никто не погиб (Доктор спас).`});return;
+      announceResults.push({icon:'💨',text:`${shooterLabel} ${verb} — никто не погиб.`});
+      privateResults.push({icon:'💊',text:`Доктор спас #${targetNum} ${tp.name} от ${shooterLabel}.`});
+      return;
     }
 
     // Is beauty alive? Check if we shoot at beauty herself
@@ -1667,9 +1674,7 @@ function finishNight(){
       if(beautyP&&!killed.has(beautyP.num)){
         // Beauty alive + target is her visited player → player survives, silenced
         const p=getPlayer(targetNum);if(p)p.silent=true;
-        announceResults.push({icon:'💋',text:`Красотка ходила к игроку #${targetNum} ${tp.name}. Он молчит.`});
         announceResults.push({icon:'💋',text:`${shooterLabel} ${verb} в <strong>#${targetNum} ${tp.name}</strong> — к нему ходила Красотка. Жив, но молчит весь день.`});
-        addLog('info',`💋 Красотка спасла #${targetNum} ${tp.name}`);
         return;
       } else {
         // Beauty is dead this night — her visit doesn't protect
@@ -2589,8 +2594,19 @@ function closeSettings(){
 }
 
 // ===== NOTES =====
-function showNotes(){document.getElementById('notes-text').value=G.notes;openModal('modal-notes');}
-function saveNotes(){G.notes=document.getElementById('notes-text').value;closeModal('modal-notes');saveState();}
+function showNotes(){
+  // Load from separate storage first (survives game end)
+  try{const saved=localStorage.getItem('mafia_notes');if(saved!==null)G.notes=saved;}catch(e){}
+  document.getElementById('notes-text').value=G.notes;
+  openModal('modal-notes');
+}
+function saveNotes(){
+  const prev=G.notes;
+  G.notes=document.getElementById('notes-text').value;
+  try{localStorage.setItem('mafia_notes',G.notes);}catch(e){}
+  if(G.notes.trim()&&G.notes!==prev)addLog('info',`📝 Заметка:\n${G.notes.trim()}`);
+  closeModal('modal-notes');saveState();
+}
 
 // ===== MODALS =====
 function openModal(id){document.getElementById(id).classList.add('open');}

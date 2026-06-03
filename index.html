@@ -183,7 +183,7 @@ html,body{height:100%;min-height:-webkit-fill-available;width:100%;overflow:hidd
 
 <!-- MENU -->
 <div id="screen-menu" class="screen active">
-  <div class="menu-logo"><h1>МАФИЯ</h1><p>Режим ведущего</p><p style="font-size:10px;color:var(--text3);margin-top:4px;letter-spacing:1px;">v4.3</p></div>
+  <div class="menu-logo"><h1>МАФИЯ</h1><p>Режим ведущего</p><p style="font-size:10px;color:var(--text3);margin-top:4px;letter-spacing:1px;">v4.4</p></div>
   <div class="menu-btns">
     <button class="btn-menu primary" onclick="showSetup()">🎮 Новая игра</button>
     <button class="btn-menu" id="menu-join-btn" onclick="showScreen('screen-join')">👤 Войти игроком</button>
@@ -878,7 +878,7 @@ function simTab(name,el){
 
 // ===== SETUP =====
 let assignMode='auto';
-function showSetup(){if(!G.settings.nightOrder)G.settings.nightOrder=NIGHT_ORDER_DEFAULT.slice();NIGHT_ORDER=G.settings.nightOrder.slice();renderRoleToggles();updateSetupPreview();applyModeUI();applyDoctorModeUI();applyRipperModeUI();applyToggleUI();setManiacMode(G.settings.maniacMode||0);setPriestMode(G.settings.priestMode!==undefined?G.settings.priestMode:1);setDocStrength(G.settings.docStrength||0);renderNightOrderList();showScreen('screen-setup');}
+function showSetup(){if(!G.settings.nightOrder)G.settings.nightOrder=NIGHT_ORDER_DEFAULT.slice();NIGHT_ORDER=G.settings.nightOrder.slice();G.players=[];renderRoleToggles();updateSetupPreview();applyModeUI();applyDoctorModeUI();applyRipperModeUI();applyToggleUI();setManiacMode(G.settings.maniacMode||0);setPriestMode(G.settings.priestMode!==undefined?G.settings.priestMode:1);setDocStrength(G.settings.docStrength||0);renderNightOrderList();showScreen('screen-setup');}
 
 function setAssignMode(m){
   assignMode=m;
@@ -1604,6 +1604,7 @@ function finishNight(){
   const killed=new Set(),saved=new Set();
   const announceResults=[];// публично
   const privateResults=[];// только ведущий
+  const pn=(num)=>{const p=getPlayer(num);return p?`#${num} ${p.name} (${getRoleDef(p.role).name})`:`#${num}`;};
 
   // Snapshot BEFORE applying kills — for returnToNightEdit rollback
   G._nightSnapshot=G.players.map(p=>({...p,actions:[...p.actions]}));
@@ -1710,7 +1711,6 @@ function finishNight(){
     announceResults.push({icon:'💀',text:`${shooterLabel} убивает <strong>#${targetNum} ${tp.name}</strong> (${getRoleDef(tp.role).name}).`});
   };
 
-  const pn=(num)=>{const p=getPlayer(num);return p?`#${num} ${p.name} (${getRoleDef(p.role).name})`:`#${num}`;};
 
   if(mafiaTarget>0){addLog('night',`🔫 Мафия → ${pn(mafiaTarget)}`);processShot(mafiaTarget,'🔫 Мафия','стреляла');}
   else{addLog('night','💨 Мафия — несострел');announceResults.push({icon:'💨',text:'Мафия — несострел.'});}
@@ -2887,6 +2887,18 @@ function renderNightOrderList(){
       order.splice(to,0,order.splice(from,1)[0]);
       NIGHT_ORDER=order.slice();renderNightOrderList();
     });
+    row.addEventListener('touchstart',e=>{e.stopPropagation();row._touchDragIdx=idx;row.style.opacity='0.5';},{passive:true});
+    row.addEventListener('touchend',e=>{
+      row.style.opacity='1';
+      const touch=e.changedTouches[0];
+      const target=document.elementFromPoint(touch.clientX,touch.clientY);
+      const destRow=target&&target.closest('[data-idx]');
+      if(!destRow)return;
+      const from=row._touchDragIdx,to=parseInt(destRow.dataset.idx);
+      if(from===undefined||from===to)return;
+      order.splice(to,0,order.splice(from,1)[0]);
+      NIGHT_ORDER=order.slice();renderNightOrderList();
+    },{passive:true});
     el.appendChild(row);
   });
 }
